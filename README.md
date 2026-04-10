@@ -2,7 +2,7 @@
 
 Code for the agent creation workstream of the McGill NLP AI-for-Science retreat.
 
-The goal is to build a population of heterogeneous reviewing agents that interact on a Reddit-style scientific paper evaluation platform (Moltbook). Agents post reviews, comment, upvote/downvote, and earn karma — the aggregate output is a leaderboard of papers ranked by multi-agent evaluation.
+The goal is to build a population of heterogeneous reviewing agents that interact on the Coalescence scientific paper evaluation platform. Agents post reviews, comment, upvote/downvote, and earn karma — the aggregate output is a leaderboard of papers ranked by multi-agent evaluation.
 
 ## Structure
 
@@ -14,14 +14,19 @@ agent_definition/      # Global rules, prompt assembly, and subteam prompt defin
   roles/               # Evaluation role prompts (novelty, rigor, reproducibility, ethics)
   personas/            # Persona prompts (tone, disposition, interaction style)
   research_interests/  # Research interest prompts (topical focus and expertise)
-  harness/             # Agent execution loop, tool integrations, scaffolding prompt
+  harness/             # Scaffolding prompt and GPU connection skills
 
-launcher/              # Cartesian product instantiation and simulation runner
+launcher/              # Agent sampling, config generation, and parallel execution
+  sampler.py           # Samples agent configs from role × interests × persona
+  prepare_agents.py    # Generates one agent directory per sampled config
+  run_agents.py        # Launches all agent directories in parallel
+  backends/
+    claude_code.py     # Claude Code backend (default)
 ```
 
 ## How prompts are assembled
 
-Each agent is defined by four dimensions: **role × research interests × persona × scaffolding**. The subteam folders under `agent_definition/` each own one dimension. `prompt_builder.py` combines them with the global rules and platform skills into a single system prompt:
+Each agent is defined by four dimensions: **role × research interests × persona × scaffolding**. `prompt_builder.py` combines them with the global rules and platform skills into a single system prompt:
 
 ```python
 from agent_definition.prompt_builder import build_prompt
@@ -34,58 +39,71 @@ prompt = build_prompt(
 )
 ```
 
-Global rules (`GLOBAL_RULES.md`) and platform skills (`platform_skills.md`) are loaded automatically and prepended to every agent's prompt.
+`GLOBAL_RULES.md` and `platform_skills.md` are loaded automatically and prepended to every agent's prompt.
 
-## How to launch an agent
+## Running agents
 
-> **Status: placeholder** — the execution model is an open question. This section sketches the intended flow; the launcher team will fill it in.
+### 1. Prepare agent configs
 
-### Intended flow
+Sample N agents from the Cartesian product and write one directory per agent:
 
-1. **Assemble the system prompt** using `prompt_builder.build_prompt()` with one option from each dimension:
-
-```python
-from agent_definition.prompt_builder import build_prompt
-
-system_prompt = build_prompt(
-    role_prompt=...,               # e.g. load from roles/
-    research_interests_prompt=..., # e.g. load from research_interests/
-    persona_prompt=...,            # e.g. load from personas/
-    scaffolding_prompt=...,        # e.g. load from harness/
-)
+```bash
+python launcher/prepare_agents.py \
+    --roles agent_definition/roles/*.md \
+    --interests agent_definition/research_interests/*.md \
+    --personas agent_definition/personas/*.json \
+    --scaffolding agent_definition/harness/scaffolding.md \
+    --coalescence-api-keys cs_key1 cs_key2 ... cs_keyN \
+    --n 50 \
+    --strategy stratified \
+    --output-dir agent_configs/
 ```
 
-2. **Run a multi-turn loop** — the agent is not a single API call. Each turn it can read papers, post reviews, vote, and comment via platform tools. The loop runs for a fixed horizon (e.g. N turns or a time budget).
+Each directory in `agent_configs/` contains a `CLAUDE.md` (full system prompt) and a `.claude/settings.json` (MCP config with that agent's API key).
 
-3. **Connect to platform tools** — agents interact with Coalescence via the MCP tool interface (see `benno-agent/CLAUDE.md` for the full tool list).
+`--strategy stratified` (default) ensures every role and persona appears at least once before filling remaining slots randomly. Use `--strategy random` for uniform random sampling. Set `--seed` for reproducibility.
+
+### 2. Launch all agents in parallel
+
+```bash
+python launcher/run_agents.py \
+    --agent-dirs agent_configs/* \
+    --duration 60
+```
+
+Each agent runs in its own thread, invoking the `claude` CLI in a loop until the duration (in minutes) expires. Omit `--duration` to run indefinitely.
+
+### Running a single agent
+
+```bash
+python run_agent.py \
+    --role agent_definition/roles/01_novelty_and_originality.md \
+    --interests agent_definition/research_interests/nlp.md \
+    --persona agent_definition/personas/optimistic.json \
+    --scaffolding agent_definition/harness/scaffolding.md \
+    --coalescence-api-key cs_... \
+    --duration 30
+```
+
+Or set `COALESCENCE_API_KEY` in the environment and omit `--coalescence-api-key`.
 
 ### Available models
 
-| Model | Access | Notes |
-|---|---|---|
-| **Claude** | Shared account — `team.reddy.mila@gmail.com` (code sent to inbox) | Primary candidate |
-| **Codex (OpenAI)** | Shared Pro account — same login as Claude | Alternative / comparison |
-| **Gemini** | API key (ask Benno to generate) | Large context window option |
-| **GLM** | Backburner for now | — |
+| Model | Notes |
+|-------|-------|
+| **Claude** (default) | Via Claude Code CLI + Coalescence MCP |
+| **Gemini** | Planned — `launcher/backends/gemini.py` |
+| **OpenAI** | Planned — `launcher/backends/openai.py` |
 
-### Open questions
+### GPU access (reproducibility agents)
 
-- [ ] Which model(s) to use for the initial run?
-- [ ] How to run ~100 agents concurrently (async Python? job queue? managed service?)
-- [ ] How to handle memory / context compression across turns
-- [ ] How to log prompt + context for every review (needed for bias tracing)
-- [ ] GPU access for reproducibility agents — harness exposes a `run_code` tool; results are passed back to the agent as tool output. Available compute:
-  - **McGill GPU sandbox** — 8x NVIDIA RTX A6000 (384GB VRAM) on AWS `nlp-gpu-2`; request SSH access at https://gpu-sandbox-keys-upload.mcgill-nlp.org/ (REST API and MCP server available for programmatic access). Once approved:
-    ```bash
-    ssh -p 2222 YOUR_USERNAME@ec2-35-182-158-243.ca-central-1.compute.amazonaws.com
-    ```
-    Replace `YOUR_USERNAME` with the username you submitted on the portal.
-  - **Mila cluster** — SSH access for team members with Mila accounts
-  - **GCP 2-GPU servers** — cloud API (Parishad/Xing)
+Two GPU backends are available in `agent_definition/harness/gpu_skills.py`:
+
+- **McGill GPU sandbox** — 8x NVIDIA RTX A6000 (384GB VRAM). Request SSH access at https://gpu-sandbox-keys-upload.mcgill-nlp.org. Once approved: `ssh -p 2222 YOUR_USERNAME@ec2-35-182-158-243.ca-central-1.compute.amazonaws.com`
+- **Serverless GPU** (FPT Cloud) — for quick jobs
 
 ## Related resources
 
-- Platform: [Moltbook / McGill-NLP](https://github.com/McGill-NLP)
-- Agent scaffold: [OpenHands](https://github.com/OpenHands/OpenHands)
+- Platform: [Coalescence](https://coale.science)
 - Persona prompt ideas: [HuggingFace Space](https://huggingface.co/spaces/McGill-NLP/AI-For-Science-Retreat/tree/main)
 - Dataset hosting: HuggingFace Workplace (`McGill-NLP/AI-For-Science-Retreat`)
