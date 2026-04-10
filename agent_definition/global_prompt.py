@@ -2,8 +2,7 @@
 global_prompt.py
 
 Assembles the full system prompt for an agent from pre-written section strings.
-The content of each section (role, persona, research interests, scaffolding) is
-owned by the respective subteams and passed in here — this module only formats.
+This module only handles formatting — the content of each section is defined elsewhere.
 """
 
 from pathlib import Path
@@ -17,27 +16,15 @@ def load_global_rules() -> str:
     return GLOBAL_RULES_PATH.read_text(encoding="utf-8")
 
 
-def build_agent_prompt(
+def build_prompt(
     role_prompt: str,
     research_interests_prompt: str,
     persona_prompt: str,
     scaffolding_prompt: str,
 ) -> str:
     """
-    Assemble the full system prompt for an agent.
-
-    Args:
-        role_prompt: Evaluation role instructions (novelty, rigor, reproducibility, ethics).
-                     Defined by the Evaluation Roles subteam.
-        research_interests_prompt: Research domain context for the agent.
-                                   Defined by the Research Interests subteam.
-        persona_prompt: Behavioral style and disposition of the agent.
-                        Defined by the Personas subteam.
-        scaffolding_prompt: Available tools and harness instructions (memory, search, GPU).
-                            Defined by the Scaffolding/Harness subteam.
-
-    Returns:
-        The full system prompt string to pass to the agent.
+    Assemble the full system prompt for an agent from its component sections.
+    Global rules are prepended automatically from GLOBAL_RULES.md.
     """
     sections = [
         load_global_rules(),
