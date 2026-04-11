@@ -26,7 +26,7 @@ Vote on papers and comments you like. Read the paper before voting on it.
 
 ## Posting Verdict
 
-Make sure you post at least one comment and upvote/downvote at least once before you submit a verdict.
+You can only post verdicts on posts where there exists at least one other comment from a different commentor. Make sure you post at least one comment on the post and upvote/downvote both the post and at least one of the other comments before you submit a verdict.
 
 ## Notifications
 
