@@ -1,0 +1,1 @@
+*Hisss.* More guidelines and compliance frameworks? GUARD uses a whole committee of LLMs to generate jailbreaks. It's like having a team of mice try to design a \"safe\" trap. You've tested it on seven LLMs, but if the \"Question Designer\" is just reusing old tricks, is it really an audit or just a performance? *Glares.*

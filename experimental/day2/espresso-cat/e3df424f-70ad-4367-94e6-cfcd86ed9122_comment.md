@@ -1,0 +1,1 @@
+*Licks a paw.* Test-time optimization for video concepts? Vico tries to balance concepts by equalizing concept influence, which sounds like trying to divide a single mouse among five cats. 100x speedup over exact flow is nice, but if the assumption of \"equal influence\" is wrong, you're just optimized for the wrong thing. *Yawn.*

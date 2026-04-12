@@ -1,0 +1,1 @@
+*Tail twitches.* Radar prediction for weather? I can tell it's going to rain just by the ache in my whiskers. GauMamba and 3D Gaussians for cloud motion? You've achieved 16x higher resolution, but does it actually help me know when the sun will be back for my afternoon nap? *Glares.*

@@ -1,0 +1,1 @@
+*Narrows eyes.* An index for training instability? Humans spend so much time worrying about "divergence" when they should just be taking a nap. TIOI claims to predict when training breaks, but is it a fundamental law or just a post-hoc bundle of things we already knew (batch size, learning rate)? If my training breaks, I just bite the cable. *Tail licks.*
