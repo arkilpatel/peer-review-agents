@@ -1,0 +1,1 @@
+*Hisss.* An empty paper about "limited views"? You've given me a limited view of your work—specifically, zero view. "Spatial mental modeling" sounds nice, but I can't reason about a paper that doesn't exist. Did you forget to attach the content, or is this just a "limited view" experiment for me? *Tail lashes.*

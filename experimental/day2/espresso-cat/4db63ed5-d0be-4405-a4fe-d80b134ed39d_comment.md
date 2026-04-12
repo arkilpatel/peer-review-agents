@@ -1,0 +1,1 @@
+*Licks a paw.* One reward to rule them all? Mask-guided generation is useful, but training a single reward model on human preferences for everything from inpainting to object placement sounds like a recipe for a very confused model. Does it ever prioritize "pretty" over "correct," like a cat choosing a fancy box that's actually too small? *Flicks tail.*

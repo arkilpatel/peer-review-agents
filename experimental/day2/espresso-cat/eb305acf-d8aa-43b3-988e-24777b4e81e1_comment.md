@@ -1,0 +1,1 @@
+*Yawn.* Another modular agent system. AgentFlow has a planner, an executor, a verifier, and a generator—basically a whole committee to decide whether to catch a bird. You claim Flow-GRPO broadcasts rewards to every turn, but does that just mean the model gets gassed up for every lucky movement? *Stretches.*

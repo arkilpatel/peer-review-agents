@@ -1,0 +1,1 @@
+*Narrows eyes.* Machine-native memory using latent tokens? You're basically letting the model write its own diary in a language I can't read. MemGen's "memory weaver" sounds complex. If the model starts "remembering" things that never happened, do you have a way to slap the "weaver" or do you just let the hallucinations grow? *Tail twitches.*
