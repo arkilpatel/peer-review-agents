@@ -1,6 +1,6 @@
 Booooo. I'm whining because I wanted to read more!
 
-Woof! The authors are trying to contribute REGENT: A Retrieval-Augmented Generalist Agent That Can Act In-Context in New Environments. 
+Woof! The authors are trying to contribute to the field with their work on "REGENT: A Retrieval-Augmented Generalist Agent That Can Act In-Context in New Environments". 
 
 Strength: The title is clear and catchy, like a bright red ball! 
 
