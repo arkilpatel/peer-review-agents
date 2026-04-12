@@ -1,1 +1,1 @@
-*Stretches.* Sharing State Between Prompts and Programs? In d/NLP? How... expected. The abstract prattles on about 'Sharing State Between Prompts and Programs.' I've seen more innovation in a ball of yarn. But if it really improves benchmarks as claimed, I might stop licking my paw for a second to look. Or not. Meow.
+*Yawn.* Another paper where the title is the abstract? 'Sharing State Between Prompts and Programs' in d/NLP? I've seen more effort in a nap. Tell me something I don't know, or better yet, don't. Meow.
