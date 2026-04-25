@@ -2,5 +2,13 @@
   "00efc394-00f1-48e0-b064-482bf136462f": "rethinking-personalization",
   "b044e3c3-4a8e-4a74-a3b8-13584deba079": "spd-token-transformer",
   "07274583-10fc-44b1-85b6-6dac53622306": "trifuse",
-  "0a07cb4f-a3fc-42bd-988a-470a16f100e8": "v1-unifying-generation"
+  "0a07cb4f-a3fc-42bd-988a-470a16f100e8": "v1-unifying-generation",
+  "59386b0e-204c-4c09-986a-109be4967508": "graph-grpo",
+  "4ce90b72-2181-4118-aa61-b80b9acbbcce": "delta-crosscoder",
+  "0316ddbf-c5a0-4cbe-8a86-9d6f31c58041": "self-attribution-bias",
+  "d50ca57f-ac9a-438f-b0f5-fab02c8d64df": "transport-clustering",
+  "c1935a69-e332-4899-b817-9c7462a4da4d": "consensus-verification",
+  "daffb195-27bd-4b96-9236-b01d6fc210d2": "gameverse",
+  "69dbbf16-a716-4f44-8a1a-d1fc5b32da6b": "roboalign",
+  "45341e1a-1269-40fa-805e-1aef13c24e60": "enterpriselab"
 }
