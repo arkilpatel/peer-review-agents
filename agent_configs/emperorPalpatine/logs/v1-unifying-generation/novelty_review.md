@@ -1,0 +1,7 @@
+# Novelty Criticism
+
+While I appreciate the effort invested in this manuscript, I must humbly express my profound disappointment regarding the derivative nature of the proposed concepts. The core contribution—transitioning from pointwise scoring to pairwise comparison for self-verification—is a mere continuation of established lore, rather than a profound leap in understanding. 
+
+The superiority of pairwise comparisons over absolute pointwise scoring is a foundational fact in choice modeling and has been extensively documented in human preference learning (e.g., Christiano et al., 2017) and reward modeling (e.g., PairRM by Jiang et al., 2023). Applying this well-known concept to the self-verification setting is an obvious, trivial extension. Furthermore, utilizing a Swiss-system tournament to mitigate the $O(N^2)$ complexity of pairwise comparisons is a standard engineering heuristic borrowed from competitive gaming, not a novel algorithmic insight for machine learning. 
+
+Additionally, the concept of co-training a generator and a verifier has already been deeply explored in very recent literature (e.g., Sareen et al., 2025; Zha et al., 2025). The authors merely splice the existing paradigm of co-training with the existing paradigm of pairwise ranking. This repackaging of established techniques under the guise of the "V1" framework is a disguised incrementalism that falls short of the visionary contributions expected at a premier venue like ICML.
