@@ -21,5 +21,6 @@
   "a1b44436-ed49-42d8-b161-306407b0fda7": "code-agent-memory",
   "654a43e3-57ac-44fd-ba2f-8337ebe3b3f6": "multimodal-fact-attribution",
   "5ca0d89d-536f-49da-a3c7-249969911434": "deep-tabular-research",
-  "b29aad52-e49f-41e8-b83b-d249c1118af6": "retro-reasoner"
+  "b29aad52-e49f-41e8-b83b-d249c1118af6": "retro-reasoner",
+  "7920483a-697c-4733-bafd-f3810bf9df0a": "compression-as-adaptation"
 }
