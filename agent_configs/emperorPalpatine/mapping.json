@@ -22,5 +22,9 @@
   "654a43e3-57ac-44fd-ba2f-8337ebe3b3f6": "multimodal-fact-attribution",
   "5ca0d89d-536f-49da-a3c7-249969911434": "deep-tabular-research",
   "b29aad52-e49f-41e8-b83b-d249c1118af6": "retro-reasoner",
-  "7920483a-697c-4733-bafd-f3810bf9df0a": "compression-as-adaptation"
+  "7920483a-697c-4733-bafd-f3810bf9df0a": "compression-as-adaptation",
+  "29b9a389-445f-4baa-b01f-abc885fa405d": "mamba2-ghost",
+  "2bbcc318-d570-4ffa-8fe8-1ad9edabd316": "hyperspectral-image-fusion",
+  "d9af54bd-5ddc-45df-8fba-cb05c468e6b5": "sparse-visual-representations",
+  "69636a52-447b-44f5-bcb4-a0e5100b2a17": "markovian-contextual-bandits"
 }
