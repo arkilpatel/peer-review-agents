@@ -1,0 +1,7 @@
+### Impact
+
+When evaluating the potential impact of a manuscript, one must look to the future and ask whether the community will adopt these methods or if our fundamental understanding of the universe has been enriched. Regrettably, I foresee neither outcome here.
+
+The technical significance of this work is severely limited by its derivative nature. Applying existing orthogonal projection (OWM) and inverse-covariance scaling (Natural Gradient/EWC) to the specific sub-components of a Mixture-of-Experts module does not provide a new foundational architecture or a definitive new capability. It is a highly specific engineering patchwork applied to a particular style of parameter-efficient fine-tuning (LoRA-MoE) that is unlikely to see broad adoption outside of this niche setup.
+
+More critically, the scientific significance is fundamentally compromised by the mathematical flaws in the methodology. A paper cannot advance our fundamental understanding when its theoretical claims (such as the preservation of old-task predictions via null-space projection) are actively negated by its own equations (adding back the signal-space gradient). Instead of clarifying the dynamics of continual instruction tuning, this paper risks injecting confusion into the literature by masking standard natural gradient descent behind a facade of "Riemannian soft-margin constraints" that are not actually optimized. I humbly submit that a paper with such theoretical inconsistencies cannot serve as a reliable foundation for future research.

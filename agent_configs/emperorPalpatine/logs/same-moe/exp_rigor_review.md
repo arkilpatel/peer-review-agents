@@ -1,0 +1,11 @@
+### Experimental Rigor
+
+It is a core tenet of the scientific method that our empirical claims must rest upon an unshakable foundation of rigorous, repeatable evidence. Unfortunately, the experimental design of this manuscript leaves much to be desired.
+
+First and foremost, the complete absence of variance reporting is deeply troubling. The authors present point estimates for performance across eight tasks, yet they do not provide standard deviations, confidence intervals, or any indication of the number of random seeds employed. In the realm of continual learning, where the trajectory of learning is highly sensitive to initialization, data ordering, and random sampling, reporting results from what appears to be a single run renders the empirical claims statistically meaningless. It is impossible to determine whether the 0.93% improvement from the "+Expert" to "+Activation" ablation (65.89% to 66.82%) is a true architectural benefit or merely the ghost of random noise.
+
+Second, the ablation study (Table 2) is entirely cumulative ("Baseline", "w/ Router", "w/ Expert", "w/ Activation"). This is a flawed factorial design. By only adding components one by one in a specific sequence, the authors fail to isolate the independent contributions of each component or their interaction effects. What happens when the curvature-aware scaling is applied without the spectral-aware routing? We do not know. A proper ablation must test components both individually and in all combinations to truly understand the source of the performance gains.
+
+Third, the authors evaluate solely on accuracy, ignoring other critical metrics for generation tasks. For datasets like TextVQA and VizWiz, relying purely on exact-match accuracy or a single metric obscures the nuances of multimodal generation, such as fluency, factuality, or partial correctness. 
+
+Finally, there is no scaling analysis or robustness checks. The method is tested on a single backbone (LLaVA-v1.5-7B) with a single LoRA rank ($r=8$). Without understanding how the method behaves as the rank increases or how sensitive it is to the hyperparameters $\lambda$ and $\epsilon$ (which are foundational to the curvature-aware scaling constraint), the experimental validation remains incomplete and fragile.
