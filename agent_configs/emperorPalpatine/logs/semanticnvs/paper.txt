@@ -1,0 +1,1573 @@
+000
+001
+002
+003
+004
+005
+006
+007
+008
+009
+010
+011
+012
+013
+014
+015
+016
+017
+018
+019
+020
+021
+022
+023
+024
+025
+026
+027
+028
+029
+030
+031
+032
+033
+034
+035
+036
+037
+038
+039
+040
+041
+042
+043
+044
+045
+046
+047
+048
+049
+050
+051
+052
+053
+054
+SemanticNVS: Improving Semantic Scene Understanding
+in Generative Novel View Synthesis
+Anonymous Authors1
+Project Page: https://semanticnvs.github.io/
+Input
+SemanticNVS (Ours)
+Input
+W/OSemantic Conditioning
+VGGT ReconstructionVGGT Reconstruction
+Figure 1.Integrating pre-trained semantic feature extractors clearly improves generative novel view synthesis quality in camera-conditioned
+diffusion models. Through better understanding of conditioning, our SemanticNVS is able to generate more consistent and high quality
+scenes (right), compared to a baseline without such mechanisms (left, SEV A (Zhou et al., 2025)), which shows unrealistic generation for
+content farer away from the input conditioning. The improvement is clearly visible in generated views (bottom) as well as subsequent
+VGGT (Wang et al., 2025) reconstructions (top). Border colors encode distance to the input view.
+Abstract
+We present SemanticNVS, a camera-
+conditioned multi-view diffusion model for
+novel view synthesis (NVS), which improves
+generation quality and consistency by integrating
+pre-trained semantic feature extractors. Existing
+NVS methods perform well for views near
+the input view, however, they tend to generate
+semantically implausible and distorted images
+1Anonymous Institution, Anonymous City, Anonymous Region,
+Anonymous Country. Correspondence to: Anonymous Author
+<anon.email@domain.com>.
+Preliminary work. Under review by the International Conference
+on Machine Learning (ICML). Do not distribute.
+under long-range camera motion, revealing severe
+degradation. We speculate that this degradation is
+due to current models failing to fully understand
+their conditioning or intermediate generated
+scene content. Thus, we propose to integrate
+pre-trained semantic feature extractors to incor-
+porate stronger scene semantics as conditioning
+to achieve high-quality generation even at
+distant viewpoints. We investigate two different
+strategies, (1) warped semantic features and (2)
+an alternating scheme ofunderstandingand
+generationat each denoising step. Experimental
+results on multiple datasets demonstrate the
+clear qualitative and quantitative (4.69%-15.26%
+in FID) improvement over state-of-the-art
+1
+055
+056
+057
+058
+059
+060
+061
+062
+063
+064
+065
+066
+067
+068
+069
+070
+071
+072
+073
+074
+075
+076
+077
+078
+079
+080
+081
+082
+083
+084
+085
+086
+087
+088
+089
+090
+091
+092
+093
+094
+095
+096
+097
+098
+099
+100
+101
+102
+103
+104
+105
+106
+107
+108
+109
+SemanticNVS: Improving Semantic Scene Understanding in Generative Novel View Synthesis
+alternatives.
+1. Introduction
+Generative novel view synthesis is emerging as a key tech-
+nique for applications in entertainment, robotics, and 3D
+reconstruction. Given a single input view and a target cam-
+era trajectory, the goal is to synthesize realistic novel views
+that follow the given camera trajectory.
+Recent methods typically adopt multi-view or video diffu-
+sion models (Zhou et al., 2025; Wan et al., 2025) and condi-
+tion generation on camera poses via Pl¨ucker ray maps (Zhou
+et al., 2025), warped images (Yu et al., 2025b), or their com-
+bination (Cao et al., 2025). While effective in regions well
+observed by the input, these approaches often degrade in
+unobserved areas, producing semantically implausible and
+distorted content when the camera moves away from the
+input view. In this work, we improve the quality and se-
+mantic consistency of such generated videos by integrating
+pre-trained semantic features for stronger conditioning.
+Finding the underlying reasons for semantically implausi-
+ble generations and hallucinations in diffusion models is
+an important open research problem. However, recent re-
+search (Zhang et al., 2023; Wewer et al., 2025) suggests
+that stronger conditioning, which narrows down the space
+of possible generations and, therefore, reduces the distribu-
+tion complexity, leads to samples with higher quality and
+consistency. Intuitively, consider the example of an image
+showing parts of a kitchen. If the model fully understands
+the high-level semantics contained in the image, for exam-
+ple, the existence of a stove, sink, and oven, it might deduce
+that the rest of the room should probably follow a kitchen-
+like layout, including appropriate furniture, such as a table
+or cupboards. The distribution to sample from becomes
+narrower and potentially simpler to model.
+Our key hypothesis is that existing methods are not fully
+capable of capturing and leveraging such semantics in the
+given conditioning. Especially, conditioning signals such as
+warped inputs are incomplete due to limited overlap with the
+input (Fig. 2), making it challenging for the denoising net-
+work to understand object identity and semantics. Moreover,
+diffusion models denoise from noisy intermediate states
+where semantic cues are corrupted, increasing the difficulty
+of understanding the content that the model is generating.
+Building on this hypothesis, we investigate how we can
+leverage pre-trained foundation models to better under-
+stand input and intermediate generated content, and, as a
+consequence, improve generative novel view synthesis in
+long-range camera motion. We present SemanticNVS, a
+method that integrates DINOv2 (Caron et al., 2021) into
+multi-view diffusion models to improve semantic under-
+standing before generation. Concretely, we propose and
+investigate two different strategies: (1) warping semantic
+features from existing views into novel views to enable the
+semantic understanding of input content, and (2) an alternat-
+ing scheme ofsemantic understandingandgenerationthat
+extracts semantic features of intermediate clean samples at
+each inverse diffusion step and uses them as conditioning
+for the next generation step, providing richer semantic cues
+than the noisy input alone.
+In exhaustive experiments on multiple datasets, we demon-
+strate that both of the proposed techniques for intermediate
+scene and image understanding clearly improve the genera-
+tion results qualitatively (as shown in Fig. 1, 4, 3), quanti-
+tatively by 4.69%-15.26% in FID, and 28.77%-30.00% in
+image-quality drift for long trajectory generation.
+In summary, our contributions are:
+• We find that current video generators do not leverage
+existing conditioning to the full amount and that further
+improvements in semantic scene and image understand-
+ing can also improve generative models for NVS.
+• We introduce a mechanism that conditions NVS gen-
+eration models on extracted and geometrically warped
+semantic features from existing conditioning views.
+• We propose a novel alternating scheme ofunderstand-
+ingandgenerationthat leverages pre-trained feature
+extractors to improve conditioning in between individ-
+ual diffusion steps.
+2. Related Work
+Generative novel view synthesis (NVS) aims to synthesize
+unseen views from as little as a single input view and a tar-
+get camera trajectory, and has surged with large-scale latent
+diffusion models. Due to the scarcity of 3D data, recent
+methods typically adapt pretrained text-to-image/video dif-
+fusion models using iterative warp-and-inpaint (Seo et al.,
+2024), camera conditioning (He et al., 2025), or additional
+pretrained priors (Wu et al., 2026).
+Warp & Inpaint.One line of work performs NVS by warp-
+ing the input view to target views and inpainting missing re-
+gions using pre-trained diffusion models (M¨uller et al., 2024;
+Tang et al., 2023; Ren & Wang, 2022). SceneScape (Frid-
+man et al., 2023) and LucidDreamer (Chung et al., 2025)
+further couple this idea with a growing 3D representation, al-
+ternating between novel view rendering, diffusion-based in-
+painting, and backprojection into 3D. ViewCrafter (Yu et al.,
+2025b), See3D (Ma et al., 2025), and FlexWorld (Chen
+et al., 2025) extend this paradigm to video diffusion mod-
+els and recent 3D reconstruction models. Several works
+strengthen geometric control by warping coordinate maps
+or diffusion noise (Seo et al., 2024; Gu et al., 2025; Burgert
+et al., 2025). While effective for incremental scene expan-
+2
+110
+111
+112
+113
+114
+115
+116
+117
+118
+119
+120
+121
+122
+123
+124
+125
+126
+127
+128
+129
+130
+131
+132
+133
+134
+135
+136
+137
+138
+139
+140
+141
+142
+143
+144
+145
+146
+147
+148
+149
+150
+151
+152
+153
+154
+155
+156
+157
+158
+159
+160
+161
+162
+163
+164
+SemanticNVS: Improving Semantic Scene Understanding in Generative Novel View Synthesis
+sion, these pipelines typically rely on partial and fragmented
+warped observations as the primary conditioning signal,
+making it challenging to maintain high-level semantic co-
+herence under large viewpoint changes or long trajectories.
+Camera Conditioning.Another line of research generates
+target views by conditioning diffusion models directly on
+camera information. MotionCtrl (Wang et al., 2024), Cam-
+eraCtrl (He et al., 2025), Uni3C (Cao et al., 2025), and
+CamCtrl3D (Popov et al., 2025) explore encodings of ex-
+trinsic and intrinsic camera parameters, (Pl¨ucker) ray maps,
+and combinations with warped RGB images to control the
+camera trajectory of video diffusion models. In parallel,
+CAT3D (Gao et al., 2024) and SEV A (Zhou et al., 2025)
+turn image generators into multi-view models conditioned
+on ray maps of desired target cameras. By training on mul-
+tiple real-world scene datasets and applying a two-stage
+inference of widespread anchor and in-between novel views,
+they enable NVS under longer trajectories and large view-
+point changes. Despite these advances, achieving both high
+visual quality and stable semantics remains difficult when
+the camera moves far from the observed view: geometric
+conditions alone may not sufficiently constrain the space of
+plausible completions in unobserved regions.
+Leveraging Pre-trained Priors for NVS.To improve 3D
+consistency in generative NVS, concurrent works (Wu et al.,
+2026) propose to leverage features or network components
+of pre-trained geometric priors like VGGT (Wang et al.,
+2025). Related to that, another line of research (Szymanow-
+icz et al., 2025; Huang et al., 2025; Zhang et al., 2025b;
+Zhu et al., 2025; Liu et al., 2025) leverages depth as an
+auxiliary supervision signal to improve the consistency of
+novel view synthesis. However, while semantic priors like
+DINO (Oquab et al., 2023) have been successfully lever-
+aged in image generation, e.g., as supervision for intermedi-
+ate features of diffusion models as proposed by REPA (Yu
+et al., 2025a), their use in the context of NVS remains unex-
+plored. This is where SemanticNVS comes into play. By
+leveraging pre-trained semantic priors, we improve scene
+understanding and, as a result, enable higher-quality and
+semantically consistent novel views synthesis.
+3. SemanticNVS
+In this section, we present SemanticNVS. We first review
+diffusion preliminaries in Sec. 3.1, then give an architecture
+overview in Sec. 3.2. Finally, we describe our two semantic-
+conditioning components in Sec. 3.3 and Sec. 3.4.
+3.1. Preliminaries
+We study generative novel view synthesis (NVS) in a condi-
+tional diffusion framework. Given one or a few source views
+with known camera parameters and a target camera trajec-
+tory as the condition, the goal is to synthesize a sequence of
+novel views that follows the trajectory.
+The conditional diffusion model comprises a forward nois-
+ing process and a learned reverse-time denoising process.
+We follow the EDM (Karras et al., 2022) formulation with a
+continuous noise level σ(t), t∈[0,1] . The forward process
+perturbs clean data by additive Gaussian noise:
+xt =x 0 +σ(t)ϵ, ϵ∼ N(0, I),(1)
+whereσ(t)∈[σ min, σmax].
+The reverse process is parameterized by a network that pre-
+dicts the noise ϵθ(xt, t, c) conditioned on the noisy input, its
+noise level, and conditioning signals c. From the predicted
+noise, we form a one-step denoised estimate:
+ˆxt
+0 =x t −σ(t)ϵ θ(xt, t, c).(2)
+At inference time, we use a discretized noise schedule
+{σt}T
+t=0 with σ0 =σ max and σT =σ min, and denoise
+from larger to smaller noise levels. Concretely, we replace
+σ(t) in Eq. 2 by σt at each discretized step. An Euler step
+fromx t tox t−1 is:
+xt−1 = ˆxt
+0 +σ t−1 ϵθ(xt, t, c)
+=x t + (σt−1 −σ t)ϵ θ(xt, t, c). (3)
+In practice, diffusion generation is typically performed in
+the latent space of a pretrained autoencoder. For brevity, we
+usexto denote diffusion states throughout the paper.
+3.2. Overall Architecture
+Fig. 2 provides an overview of SemanticNVS. We build
+our framework on top of SEV A (Zhou et al., 2025), a camera-
+conditioned diffusion backbone for novel view synthesis.
+SEV A performs conditional generation by providing the de-
+noising network with camera conditioning signals c Pl¨ucker
+ray maps. We further incorporate warped RGB for bet-
+ter performance, following Cao et al. (2025); Popov et al.
+(2025). However, these conditions cannot provide enough
+high-level semantics for visually realistic and semantically
+plausible novel-view synthesis (especially under long-range
+camera motion). We therefore augment the conditioning
+with pretrained semantic features (i.e., DINO features), to
+provide richer semantic evidence while keeping the same
+diffusion backbone.
+Specifically, we introduce two complementary semantic
+augmentations on top of the camera-conditioned diffusion
+framework: (i) we geometrically warp pretrained semantic
+features extracted from the source views into the target view,
+yielding warped semantic features (Fw in Fig. 2) that anchor
+semantics in visible regions (Sec. 3.3); and (ii) we alternate
+semantic understanding and generation during denoising,
+3
+165
+166
+167
+168
+169
+170
+171
+172
+173
+174
+175
+176
+177
+178
+179
+180
+181
+182
+183
+184
+185
+186
+187
+188
+189
+190
+191
+192
+193
+194
+195
+196
+197
+198
+199
+200
+201
+202
+203
+204
+205
+206
+207
+208
+209
+210
+211
+212
+213
+214
+215
+216
+217
+218
+219
+SemanticNVS: Improving Semantic Scene Understanding in Generative Novel View Synthesis
+⨁
+Timestep 𝑡Input ViewNovel Views
+Warped DINOF! WarpedRGB
+CameraTraject.
+DINO
+RayMaps
+Combine withM"(Sec. 3.4)    Input Image 
+DINO
+MergedF##
+⨁
+Noisy𝑥#
+InputImage 
+One-stepDenoisedDINOF#NovelImages
+RGB
+Multi-ViewDiffusion
+DINO F
+𝑥%$#
+Figure 2.Method Overview. SemanticNVS integrates semantic DINO features into the multi-view diffusion setup in two different
+ways. First, it provides warped features from the given input view and uses them as additional conditioning. Second, it extracts DINO
+features from intermediate generationsˆxt
+0 of the previous iteration and uses them to complete the warped DINO features.
+i.e., extracting semantic features from the current one-step
+denoised estimate ˆxt
+0 and feeding them back as step-wise
+conditioning for the next update t→t−1 , which improves
+semantic consistency in unobserved regions and along long
+trajectories (Sec. 3.4). For clarity, we describe the method
+for a single target frame x in the main text. Full-trajectory
+generation follows by applying the same procedure to all
+target frames in parallel with frame-dependent step indices.
+3.3. Warped Semantic Features
+Warped RGB observations are often incomplete due to occlu-
+sions and limited source coverage, resulting in fragmented
+appearance evidence in target views. These partial obser-
+vations make it difficult for the denoising network to infer
+object identity and semantics, especially in unobserved re-
+gions of novel views. To address this issue, we introduce
+semantic conditioning that provides high-level cues to help
+the model recognize objects under severe missing regions.
+Specifically, given an input imageI∈R H×W×3 , we extract
+semantic featuresF∈R H×W×C using a DINO encoder
+F=f DINO(I).(4)
+Following the warping strategy in Yu et al. (2025b), we
+employ a dense stereo model (e.g., VGGT (Wang et al.,
+2025)) to reconstruct a point cloud from the input view. We
+then project the per-point DINO features into target cameras
+along a given camera trajectory, rendering warped semantic
+feature images Fw ∈R H×W×C . These warped seman-
+tic features complement warped RGB by providing robust
+object-level context even when appearance is incomplete.
+Since the semantic features are high-dimensional, we em-
+ploy a lightweight linear projection to reduce their chan-
+nel dimensionality before using them as conditioning. To
+improve training stability and performance, we first ℓ2-
+normalize the semantic features along the channel dimen-
+sion before projecting them to a compact representation
+with a1×1convolutionϕ(·)
+˜Fw =ϕ
+ Fw
+∥Fw∥2
+
+, ˜Fw ∈R H×W×C ′
+,(C ′ ≪C).(5)
+Finally, we feed ˜Fw as an additional conditioning signal
+to the denoising U-Net, alongside the other camera-related
+conditions. In contrast to the warped RGB, we do not addi-
+tionally encode the DINO features into a spatially smaller
+latent space using the V AE encoder.
+3.4. Semantic Features from Intermediate Samples
+During sampling, the network predicts an estimate of the
+clean sample ˆxt
+0 at each denoising step t, and the sampler
+then re-injects noise to obtain xt−1, which serves as the
+input to the next step (Eq. 3). Since xt−1 remains a noisy
+input, it contains limited semantic cues and is therefore
+difficult for the network to interpret.
+To improve semantic awareness during generation, we in-
+troduce an explicit understanding signal at every denoising
+step. While xt−1 is corrupted, the intermediate prediction
+ˆxt
+0 is noise-free and thus more amenable to semantic fea-
+ture extraction. We therefore leverage a foundational vision
+model to derive dense semantics from ˆxt
+0. Specifically, we
+extract DINO features
+Ft =f DINO(ˆxt
+0).(6)
+Moreover, the warped DINO features Fw are rendered from
+the observed input views and are thus more reliable in re-
+gions supported by input evidence. Accordingly, we use
+Fw in rendered regions and fall back to Ft elsewhere. Con-
+cretely, we fuse them using the rendering maskM R:
+˜Ft =M R ⊙F w +
+ 
+1−M R
+
+⊙F t,(7)
+4
+220
+221
+222
+223
+224
+225
+226
+227
+228
+229
+230
+231
+232
+233
+234
+235
+236
+237
+238
+239
+240
+241
+242
+243
+244
+245
+246
+247
+248
+249
+250
+251
+252
+253
+254
+255
+256
+257
+258
+259
+260
+261
+262
+263
+264
+265
+266
+267
+268
+269
+270
+271
+272
+273
+274
+SemanticNVS: Improving Semantic Scene Understanding in Generative Novel View Synthesis
+where ⊙ denotes element-wise multiplication and MR indi-
+cates pixels covered by rendering from the input views. This
+alternating scheme of understanding and denoising provides
+semantic guidance for the sampling process at every step.
+Blur for Approximating ˆxt
+0 in Training.The conditioning
+on semantic features in every denoising step leverages the
+intermediate samples ˆxt
+0 at inference time. However, dur-
+ing training we do not have access to paired data (ˆxt
+0, x0).
+Empirically, we observe that ˆxt
+0 is typically blurred. There-
+fore, we apply a blur operator, i.e., a Gaussian filter to x0
+to approximate ˆxt
+0 and use the resulting image as a sur-
+rogate. With increasing noise level t, we observe that the
+predicted clean sample ˆxt
+0 during sampling becomes increas-
+ingly blurred. Hence, we mimic this effect by increasing the
+blur strength of the Gaussian filter with the timestep t. We
+provide further details in the appendix.
+4. Experiments
+In this section, we describe our experimental evaluation of
+SemanticNVS. After introducing the experimental setup
+in Sec. 4.1 and implementation details in Sec. 4.2, we pro-
+vide qualitative and quantitative comparisons with baselines
+in Sec. 4.3, showing the advantage of our method by incor-
+porating scene understanding in generative NVS. Sec. 4.4
+ablates on the introduced semantic conditionings, the choice
+of the pre-trained feature extractor, and further provides a
+comparison with REPA. Please refer to additional details
+and qualitative results including videos in theappendixand
+theproject page.
+4.1. Experimental Setup
+Datasets.We evaluate NVS on two real-world datasets,
+RealEstate10K (Zhou et al., 2018) and Tanks-and-
+Temples (Knapitsch et al., 2017), which cover indoor and
+outdoor scenes. Tanks-and-Temples is out of the training dis-
+tribution and used to evaluate generalization. We consider
+two trajectory regimes:short trajectorycontains 80-100
+frames andlong trajectorycontains more than 250 frames.
+For each, we randomly sample 100 videos for evaluation.
+Baselines.We consider three baselines: ViewCrafter (Yu
+et al., 2025b), Uni3C (Cao et al., 2025), and SEV A (Zhou
+et al., 2025). ViewCrafter and Uni3C are limited to single-
+window generation with a maximum number of frames and
+do not provide a mechanism to roll the window forward (i.e.,
+sliding-window/iterative generation with context propaga-
+tion). As a result, they cannot synthesize long trajectories
+beyond the supported window length. Therefore, we uni-
+formly subsample the test trajectories with a fixed stride to
+20 frames for a fair comparison. In contrast, SEV A supports
+full-trajectory generation in a two-stage procedure of an-
+chor and interpolated view generation. Thus, we provide an
+additional comparison with SEV A on the full trajectories.
+Metrics.We evaluate novel view synthesis quality based
+on six factors:(1) Distribution fidelity.We measure
+distribution-level fidelity by computing Fr´echet Inception
+Distance (FID) (Heusel et al., 2017) between generated
+frames and the ground truth test set.(2) Image quality.
+We assess per-frame perceptual quality using theImaging
+Qualitymetric from VBench (Huang et al., 2024). We re-
+port the dataset-level score by averaging over all test videos.
+(3) Image-quality drift along the trajectory.To quan-
+tify degradation along the camera trajectory, we adopt the
+drifting measurement from Zhang et al. (2025a) and com-
+pute the start–end contrast as an image-quality metric.(4)
+Camera control accuracy. To evaluate the accuracy of
+camera control, we assess the alignment between ground
+truth camera poses and poses estimated from the generated
+images, following Yu et al. (2025b).(5) Cross-view detail
+preservation. Following previous works (Zhou et al., 2025;
+Yu et al., 2025b), we measure how faithfully the generated
+views match the ground-truth target views, using PSNR,
+SSIM (Wang et al., 2004), and LPIPS (Zhang et al., 2018).
+(6) 3D consistency.We evaluate geometric consistency
+across generated views using MEt3R (Asim et al., 2025).
+Since MEt3R is defined for a pair of images, we compute it
+on temporally adjacent views along the generated trajectory.
+4.2. Implementation Details
+Training Details.We build our method on top of
+SEV A (Zhou et al., 2025) and initialize from its released
+pretrained checkpoint. Our models are trained on a mixed
+real-world corpus composed of RealEstate10K (Zhou et al.,
+2018) and DL3DV (Ling et al., 2024), which jointly cover
+both indoor and outdoor scenes and comprise approximately
+75k videos. Training is conducted on 4 GPUs with a batch
+size of 1 per GPU using AdamW, with a learning rate
+of 1.25×10 −5 and weight decay of 1×10 −2. The fi-
+nal model is trained for 60,000 iterations. We enable the
+proposedSemantic Features from Intermediate Samples
+training paradigm after 37,000 iterations; empirically, this
+staged schedule yields better performance than applying
+the paradigm from the beginning of training. Unless oth-
+erwise specified, we use image resolution H=W= 576 ,
+latent resolution h=w= 72 , projected semantic feature
+dimensionC ′ = 32, and window sizeN= 21.
+Inference Details.Following SEV A (Zhou et al., 2025), we
+adopt a two-stage inference procedure. In the first stage, we
+synthesize a set ofanchorviews uniformly sampled along
+the target camera trajectory. In the second stage, we generate
+the intermediate views by interpolating between adjacent
+anchors. SemanticNVS significantly improves the results
+of the first stage. Since the second stage mostly performs
+interpolation of previously generated anchor views, it does
+not profit as much from additional semantic conditioning.
+5
+275
+276
+277
+278
+279
+280
+281
+282
+283
+284
+285
+286
+287
+288
+289
+290
+291
+292
+293
+294
+295
+296
+297
+298
+299
+300
+301
+302
+303
+304
+305
+306
+307
+308
+309
+310
+311
+312
+313
+314
+315
+316
+317
+318
+319
+320
+321
+322
+323
+324
+325
+326
+327
+328
+329
+SemanticNVS: Improving Semantic Scene Understanding in Generative Novel View Synthesis
+Input
+GTViewCrafterUni3CSEVAOurs
+Time
+Figure 3.Qualitative Comparison on RealEstate10K.ViewCrafter and Uni3C struggle to follow the long camera trajectory accurately.
+SEV A produces degraded views when moving far from the input. In contrast, our method better adheres to the target trajectory, generates
+more realistic novel views, and yields a more coherent underlying geometry when reconstructing the 3D scene from the generated frames.
+More results can be found in theappendixand theproject page.
+Method Short Trajectory (80∼100) Long Trajectory (≥250)
+FID↓ImQ↑Drift↓RE↓TE↓MEt3R↓PSNR↑SSIM↑LPIPS↓ FID↓ImQ↑Drift↓RE↓TE↓MEt3R↓PSNR↑SSIM↑LPIPS↓
+ViewCrafter32.92958.499 0.3870.329 0.030 0.075 15.000 0.559 0.356 37.70358.599 0.597 4.612 0.339 0.162 11.021 0.458 0.595
+Uni3C 25.308 55.2460.335 0.3580.028 0.069 16.208 0.599 0.323 39.572 49.9840.533 3.4340.197 0.151 12.652 0.521 0.564
+SEV A 26.37659.1450.357 0.2020.014 0.067 15.517 0.579 0.357 31.34457.9710.511 0.5350.055 0.110 12.871 0.517 0.519
+Ours 22.72662.0600.251 0.1890.019 0.067 18.024 0.646 0.251 26.56166.4580.364 0.4680.054 0.109 13.817 0.542 0.450
+Table 1.Quantitative Comparison on RealEstate10K. SemanticNVS achieves the best overall performance across a variety of metrics,
+showing significant improvements in generation quality, geometric consistency, and reconstruction quality.
+4.3. Comparison to Baselines
+Qualitative Comparison.Fig. 3 and Fig. 4 present
+qualitative comparisons onlongcamera trajectories for
+RealEstate10K and Tanks-and-Temples. For each sequence,
+we uniformly sample six generated frames along the tra-
+jectory ordered left-to-right by time. To further assess the
+plausibility of the generated geometry and camera control
+accuracy, we feed the generated frames into VGGT to obtain
+a reconstructed scene together with the estimated camera
+poses. The top color bar and the camera frustums share the
+same time-based color coding, with the input highlighted in
+black.
+When the camera moves far away from the input view,
+ViewCrafter and Uni3C fail to follow the target camera
+trajectory, leading to severe viewpoint drift and content col-
+lapse. As a consequence, the reconstructions exhibit broken
+geometry and misaligned estimated poses. SEV A follows
+the camera trajectory more accurately, but produces unre-
+alistic and blurry content for extrapolated views far from
+the input, as shown in the highlighted regions. As a result,
+the reconstructed 3D scene suffers from noisy geometry. In
+contrast, our method maintains both trajectory adherence
+and visual realism across large viewpoint changes.
+Quantitative Comparison.We report the quantitative eval-
+uation of baselines and our method on RealEstate10K in Ta-
+ble 1, on Tanks-and-Temples in Table 2. On RealEstate10K,
+we improve the generation results quantitatively by 10.20%-
+15.26% in FID, 4.93%-13.41% in image quality, and
+25.07%-28.77% in image-quality drift. The pronounced
+reduction in drift indicates that our generations remain sta-
+ble even when the camera moves far away from the input
+view, where the target views have little overlap with the
+input. On Tanks-and-Temples, which is out of the training
+distribution and thus serves as a generalization benchmark,
+we improve FID by 4.69%–14.98% and image-quality drift
+by 1.83%–30.00%. While ViewCrafter attains competitive
+ImQ and Drift, it exhibits worse camera control and 3D
+consistency, especially on long trajectories. SEV A shows a
+clear degradation even on short trajectories on this dataset.
+Overall, our method achieves the best overall performance,
+demonstrating good generalization.
+6
+330
+331
+332
+333
+334
+335
+336
+337
+338
+339
+340
+341
+342
+343
+344
+345
+346
+347
+348
+349
+350
+351
+352
+353
+354
+355
+356
+357
+358
+359
+360
+361
+362
+363
+364
+365
+366
+367
+368
+369
+370
+371
+372
+373
+374
+375
+376
+377
+378
+379
+380
+381
+382
+383
+384
+SemanticNVS: Improving Semantic Scene Understanding in Generative Novel View Synthesis
+Input
+GTViewCrafterUni3CSEVAOurs
+Time
+Figure 4.Qualitative Comparison on Tanks-and-Temples.ViewCrafter, Uni3C, and SEV A fail to follow the long camera trajectory and
+produce unrealistic or degraded views. In contrast, our method better adheres to the target trajectory, generates more realistic novel views,
+and yields a more coherent underlying geometry when reconstructing from the generated frames.
+Method Short Trajectory (80∼100) Long Trajectory (≥250)
+FID↓ImQ↑Drift↓RE↓TE↓MEt3R↓PSNR↑SSIM↑LPIPS↓ FID↓ImQ↑Drift↓RE↓TE↓MEt3R↓PSNR↑SSIM↑LPIPS↓
+ViewCrafter38.58771.0290.2150.901 0.008 0.104 14.557 0.427 0.364 57.99868.8670.380 5.001 0.027 0.187 12.137 0.352 0.510
+Uni3C 36.166 61.491 0.3660.4010.006 0.088 15.560 0.464 0.356 57.873 55.189 0.4732.5640.020 0.152 13.402 0.409 0.505
+SEV A 44.74968.3440.340 0.3810.002 0.098 12.978 0.400 0.474 46.56466.2580.436 0.6400.005 0.127 12.196 0.373 0.531
+Ours 30.74970.9850.219 0.1970.003 0.085 16.240 0.495 0.275 44.38169.8290.266 0.5770.008 0.119 13.825 0.426 0.405
+Table 2.Quantitative Comparison on Tanks-and-Temples.While SEV A performs significantly worse on scenes out of training
+distribution,SemanticNVSis more robust and achieves the best overall performance on Tanks-and-Temples.
+Method Full Long Trajectory (≥250)
+FID↓ImQ↑Drift↓RE (◦)↓TE (m)↓MEt3R↓PSNR↑SSIM↑LPIPS↓
+SEV A25.34757.8160.554 0.297 0.035 0.070 13.3100.529 0.502Ours 21.84264.4630.359 0.310 0.032 0.070 14.1550.553 0.443
+Table 3.Full Trajectory Comparison on RealEstate10K.Ap-
+plying the two-stage anchor generation and view interpolation for
+both methods, we beat SEV A in almost all metrics.
+We further compare against SEV A on full-trajectory gener-
+ation in Table 3, where our method achieves superior per-
+formance, improving FID, image quality, and image-quality
+drift by 13.83%, 11.50%, and 35.20%, respectively, while
+maintaining comparable camera control and 3D consistency.
+4.4. Ablation Studies
+Ablation on Core Components.Table 4 ablates theWarped
+Semantic FeaturesandSemantic Features from Intermediate
+Samples, which we denote asWarped DINOandIterative
+DINO. Since SEV A does not release its training code and
+Method Long Trajectory (≥250)
+FID↓ImQ↑Drift↓RE↓TE↓MEt3R↓PSNR↑SSIM↑LPIPS↓
+SEV A 31.344 57.971 0.511 0.5350.055 0.110 12.871 0.517 0.519SEV A finetuned31.896 56.794 0.603 0.539 0.076 0.114 12.609 0.515 0.556+ Warped RGB29.942 59.201 0.499 0.518 0.063 0.124 13.790 0.529 0.465+ Warped DINO28.90860.4520.4240.5060.0520.111 13.8090.538 0.452+ Iterative RGB28.26062.8200.3990.472 0.0560.110 13.8150.539 0.451+ Iterative DINO26.56166.4580.3640.4680.054 0.109 13.8170.542 0.450
+Table 4.Ablation on Core Components on RealEstate10K.
+Warped and Iterative DINO both individually improve the overall
+performance. Using DINO features of intermediate samples (Itera-
+tive DINO) outperforms the equivalent Iterative RGB variant.
+training data, we additionally report results of SEV A fine-
+tuned with our training pipeline and data for a fair compar-
+ison. Following Uni3C, we augment SEV A withWarped
+RGB, which serves as our baseline.
+AddingWarped DINOconsistently improves all metrics.
+Further introducingIterative DINOyields additional gains,
+with particularly substantial improvements in FID, ImQ, and
+Drift, while achieving competitive translation error (TE).
+Qualitative results show the same trend in Fig. 5.
+7
+385
+386
+387
+388
+389
+390
+391
+392
+393
+394
+395
+396
+397
+398
+399
+400
+401
+402
+403
+404
+405
+406
+407
+408
+409
+410
+411
+412
+413
+414
+415
+416
+417
+418
+419
+420
+421
+422
+423
+424
+425
+426
+427
+428
+429
+430
+431
+432
+433
+434
+435
+436
+437
+438
+439
+SemanticNVS: Improving Semantic Scene Understanding in Generative Novel View Synthesis
+Input
+GT+ Warped RGB+WarpedDINO+ Iterative DINO
+Time
+Figure 5.Qualitative Ablation on RealEstate10K.Warped RGB fails to generate the floor-to-ceiling glass window on the right side
+of the input view. Adding Warped DINO produces a clear window, but the chair remains incomplete. Further guiding sampling with
+intermediate-sample features (Iterative DINO) enables view-consistent synthesis of the entire scene.
+Method Long Trajectory (≥250)
+FID↓ImQ↑Drift↓RE↓TE↓MEt3R↓PSNR↑SSIM↑LPIPS↓
+DINOv329.05864.5900.4160.4580.055 0.112 13.544 0.549 0.456VGGT 28.70461.7810.4070.5380.059 0.109 13.608 0.540 0.452DINOv226.56166.4580.3640.4680.054 0.109 13.817 0.542 0.450
+Table 5.Feature Ablation on RealEstate10K.DINOv2 achieves
+the best overall performance among different foundation models.
+Method Long Trajectory (≥250)
+FID↓ImQ↑Drift↓RE↓TE↓MEt3R↓PSNR↑SSIM↑LPIPS↓
+SEV A finetuned31.89656.7940.6030.5390.076 0.114 12.6090.515 0.556+ REPA 30.57963.2310.3840.7210.067 0.116 12.7870.503 0.538+ Ours 26.56166.4580.3640.4680.054 0.109 13.8170.542 0.450
+Table 6.Comparison with REPA on RealEstate10K.While
+both making use of DINO as semantic prior, SemanticNVS
+outperforms REPA for generative NVS.
+We also ablate a variant that, at each denoising step, condi-
+tions only on ˆxt
+0 rather than its DINO feature. We denote
+this variant asIterative RGB. This variant remains beneficial,
+but the improvement is smaller than using DINO features,
+suggesting that conditioning on the noise-free estimate ˆxt
+0
+provides more informative guidance than using xt alone.
+Moreover, conditioning on the DINO feature of ˆxt
+0 injects
+stronger semantic understanding, further strengthening the
+conditioning and leading to the best performance.
+Comparison with REPA.We compare with REPA (Yu
+et al., 2025a), which distills DINO features into the interme-
+diate representations of the diffusion model. While usually
+applied for single-image generation, we adapt it to our set-
+ting of generative NVS with a multi-view diffusion model
+by supervising the intermediate features of all jointly gen-
+erated views during training with the DINO alignment loss.
+As shown in Table 6, REPA improves performance over the
+baseline, but remains inferior to our approach. We attribute
+this gap to the way semantic understanding is incorporated:
+our method providesexplicitunderstanding by decoupling
+semantic interpretation from the generative model, whereas
+REPA injects semanticsimplicitlyinto the diffusion back-
+bone, which can consume generation capacity and weaken
+the model’s ability to focus on synthesis.
+Comparison with Different Features.We further compare
+different semantic features, including DINOv2, DINOv3,
+and VGGT features in Table 5. DINOv3 yields clear im-
+provements in ImQ and Drift, but does not improve FID.
+Using VGGT features improves all metrics and achieves
+competitive camera control. Among the three, DINOv2
+provides the most consistent gains across all metrics.
+5. Conclusion
+We presented SemanticNVS, a method that integrates pre-
+trained semantic feature extractors into multi-view diffusion
+to strengthen the semantic conditioning of the model. Our
+experiments demonstrate significant qualitative and quanti-
+tative improvements in semantic consistency and generation
+quality, especially in weak conditioning domains, e.g., long
+trajectory generation. The finding suggests that information
+extraction from conditioning signals in current multi-view
+diffusion models still has potential for improvements and
+that further advances in self-supervised pre-training can
+benefit generative novel view synthesis as well.
+8
+440
+441
+442
+443
+444
+445
+446
+447
+448
+449
+450
+451
+452
+453
+454
+455
+456
+457
+458
+459
+460
+461
+462
+463
+464
+465
+466
+467
+468
+469
+470
+471
+472
+473
+474
+475
+476
+477
+478
+479
+480
+481
+482
+483
+484
+485
+486
+487
+488
+489
+490
+491
+492
+493
+494
+SemanticNVS: Improving Semantic Scene Understanding in Generative Novel View Synthesis
+References
+Asim, M., Wewer, C., Wimmer, T., Schiele, B., and Lenssen,
+J. E. Met3r: Measuring multi-view consistency in gener-
+ated images. InIEEE Conf. Comput. Vis. Pattern Recog.,
+2025.
+Burgert, R., Xu, Y ., Xian, W., Pilarski, O., Clausen,
+P., He, M., Ma, L., Deng, Y ., Li, L., Mousavi, M.,
+Ryoo, M., Debevec, P., and Yu, N. Go-with-the-flow:
+Motion-controllable video diffusion models using real-
+time warped noise. InIEEE Conf. Comput. Vis. Pattern
+Recog., 2025.
+Cao, C., Zhou, J., Li, s., Liang, J., Yu, C., Wang, F., Xue,
+X., and Fu, Y . Uni3c: Unifying precisely 3d-enhanced
+camera and human motion controls for video generation.
+InSIGGRAPH, 2025.
+Caron, M., Touvron, H., Misra, I., J ´egou, H., Mairal, J.,
+Bojanowski, P., and Joulin, A. Emerging properties in
+self-supervised vision transformers. InInt. Conf. Comput.
+Vis., 2021.
+Chen, L., Zhou, Z., Zhao, M., Wang, Y ., Zhang, G., Huang,
+W., Sun, H., Wen, J.-R., and Li, C. Flexworld: Progres-
+sively expanding 3d scenes for flexible-view exploration.
+InAdv. Neural Inform. Process. Syst., 2025.
+Chung, J., Lee, S., Nam, H., Lee, J., and Lee, K. M. Lucid-
+dreamer: Domain-free generation of 3d gaussian splatting
+scenes. InIEEE Trans. Vis. Comput. Graph., 2025.
+Fridman, R., Abecasis, A., Kasten, Y ., and Dekel, T. Sce-
+nescape: Text-driven consistent scene generation. InAdv.
+Neural Inform. Process. Syst., 2023.
+Gao, R., Hoł y´nski, A., Henzler, P., Brussee, A., Martin-
+Brualla, R., Srinivasan, P., Barron, J. T., and Poole, B.
+Cat3d: Create anything in 3d with multi-view diffusion
+models. InAdv. Neural Inform. Process. Syst., 2024.
+Gu, Z., Yan, R., Lu, J., Li, P., Dou, Z., Si, C., Dong, Z.,
+Liu, Q., Lin, C., Liu, Z., Wang, W., and Liu, Y . Diffusion
+as shader: 3d-aware video diffusion for versatile video
+generation control. InProceedings of the Special Interest
+Group on Computer Graphics and Interactive Techniques
+Conference Conference Papers, 2025.
+He, H., Xu, Y ., Guo, Y ., Wetzstein, G., Dai, B., Li, H., and
+Yang, C. Cameractrl: Enabling camera control for video
+diffusion models. InInt. Conf. Learn. Represent., 2025.
+Heusel, M., Ramsauer, H., Unterthiner, T., Nessler, B., and
+Hochreiter, S. Gans trained by a two time-scale update
+rule converge to a local nash equilibrium. InAdv. Neural
+Inform. Process. Syst., 2017.
+Huang, T., Zheng, W., Wang, T., Liu, Y ., Wang, Z., Wu,
+J., Jiang, J., Li, H., Lau, R., Zuo, W., and Guo, C. V oy-
+ager: Long-range and world-consistent video diffusion
+for explorable 3d scene generation. InSIGGRAPH, 2025.
+Huang, Z., He, Y ., Yu, J., Zhang, F., Si, C., Jiang, Y ., Zhang,
+Y ., Wu, T., Jin, Q., Chanpaisit, N., Wang, Y ., Chen, X.,
+Wang, L., Lin, D., Qiao, Y ., and Liu, Z. Vbench: Com-
+prehensive benchmark suite for video generative models.
+InIEEE Conf. Comput. Vis. Pattern Recog., 2024.
+Karras, T., Aittala, M., Aila, T., and Laine, S. Elucidating
+the design space of diffusion-based generative models. In
+Adv. Neural Inform. Process. Syst., 2022.
+Knapitsch, A., Park, J., Zhou, Q.-Y ., and Koltun, V . Tanks
+and temples: Benchmarking large-scale scene reconstruc-
+tion. 2017.
+Ling, L., Sheng, Y ., Tu, Z., Zhao, W., Xin, C., Wan, K., Yu,
+L., Guo, Q., Yu, Z., Lu, Y ., Li, X., Sun, X., Ashok, R.,
+Mukherjee, A., Kang, H., Kong, X., Hua, G., Zhang, T.,
+Benes, B., and Bera, A. Dl3dv-10k: A large-scale scene
+dataset for deep learning-based 3d vision. InIEEE Conf.
+Comput. Vis. Pattern Recog., 2024.
+Liu, L., Li, W., Zhang, D., Wang, S., and Jiao, S. Idcnet:
+Guided video diffusion for metric-consistent rgbd scene
+generation with precise camera control. InarXiv.org,
+2025.
+Ma, B., Gao, H., Deng, H., Luo, Z., Huang, T., Tang, L.,
+and Wang, X. You see it, you got it: Learning 3d creation
+on pose-free videos at scale. InIEEE Conf. Comput. Vis.
+Pattern Recog., 2025.
+M¨uller, N., Schwarz, K., R¨ossle, B., Porzi, L., Bul`o, S. R.,
+Nießner, M., and Kontschieder, P. Multidiff: Consistent
+novel view synthesis from a single image. InIEEE Conf.
+Comput. Vis. Pattern Recog., 2024.
+Oquab, M., Darcet, T., Moutakanni, T., V o, H. V .,
+Szafraniec, M., Khalidov, V ., Fernandez, P., Haziza, D.,
+Massa, F., El-Nouby, A., Howes, R., Huang, P.-Y ., Xu, H.,
+Sharma, V ., Li, S.-W., Galuba, W., Rabbat, M., Assran,
+M., Ballas, N., Synnaeve, G., Misra, I., Jegou, H., Mairal,
+J., Labatut, P., Joulin, A., and Bojanowski, P. Dinov2:
+Learning robust visual features without supervision. In
+arXiv.org, 2023.
+Popov, S., Raj, A., Li, Y ., Krainin, M., Freeman, W. T., and
+Rubinstein, M. Camctrl3d: Single-image scene explo-
+ration with precise 3d camera control. InInt. Conf. 3D
+Vis., 2025.
+Ren, X. and Wang, X. Look outside the room: Synthesizing
+a consistent long-term 3d scene video from a single image.
+InIEEE Conf. Comput. Vis. Pattern Recog., 2022.
+9
+495
+496
+497
+498
+499
+500
+501
+502
+503
+504
+505
+506
+507
+508
+509
+510
+511
+512
+513
+514
+515
+516
+517
+518
+519
+520
+521
+522
+523
+524
+525
+526
+527
+528
+529
+530
+531
+532
+533
+534
+535
+536
+537
+538
+539
+540
+541
+542
+543
+544
+545
+546
+547
+548
+549
+SemanticNVS: Improving Semantic Scene Understanding in Generative Novel View Synthesis
+Seo, J., Fukuda, K., Shibuya, T., Narihira, T., Murata, N.,
+Hu, S., Lai, C.-H., Kim, S., and Mitsufuji, Y . Genwarp:
+Single image to novel views with semantic-preserving
+generative warping. InAdv. Neural Inform. Process. Syst.,
+2024.
+Szymanowicz, S., Zhang, J. Y ., Srinivasan, P., Gao, R.,
+Brussee, A., Holynski, A., Martin-Brualla, R., Barron,
+J. T., and Henzler, P. Bolt3d: Generating 3d scenes in
+seconds. InInt. Conf. Comput. Vis., 2025.
+Tang, S., Zhang, F., Chen, J., Wang, P., and Furukawa,
+Y . MVDiffusion: Enabling holistic multi-view image
+generation with correspondence-aware diffusion. InAdv.
+Neural Inform. Process. Syst., 2023.
+Wan, T., Wang, A., Ai, B., Wen, B., Mao, C., Xie, C.-W.,
+Chen, D., Yu, F., Zhao, H., Yang, J., Zeng, J., Wang, J.,
+Zhang, J., Zhou, J., Wang, J., Chen, J., Zhu, K., Zhao, K.,
+Yan, K., Huang, L., Feng, M., Zhang, N., Li, P., Wu, P.,
+Chu, R., Feng, R., Zhang, S., Sun, S., Fang, T., Wang, T.,
+Gui, T., Weng, T., Shen, T., Lin, W., Wang, W., Wang, W.,
+Zhou, W., Wang, W., Shen, W., Yu, W., Shi, X., Huang,
+X., Xu, X., Kou, Y ., Lv, Y ., Li, Y ., Liu, Y ., Wang, Y .,
+Zhang, Y ., Huang, Y ., Li, Y ., Wu, Y ., Liu, Y ., Pan, Y .,
+Zheng, Y ., Hong, Y ., Shi, Y ., Feng, Y ., Jiang, Z., Han,
+Z., Wu, Z.-F., and Liu, Z. Wan: Open and advanced
+large-scale video generative models. InarXiv.org, 2025.
+Wang, J., Chen, M., Karaev, N., Vedaldi, A., Rupprecht,
+C., and Novotny, D. Vggt: Visual geometry grounded
+transformer. InIEEE Conf. Comput. Vis. Pattern Recog.,
+2025.
+Wang, Z., Bovik, A., Sheikh, H., and Simoncelli, E. Image
+quality assessment: from error visibility to structural
+similarity.IEEE Trans. Image Process., 13(4):600–612,
+2004.
+Wang, Z., Yuan, Z., Wang, X., Li, Y ., Chen, T., Xia, M.,
+Luo, P., and Shan, Y . Motionctrl: A unified and flexible
+motion controller for video generation. InSIGGRAPH,
+2024.
+Wewer, C., Pogodzinski, B., Schiele, B., and Lenssen, J. E.
+Spatial reasoning with denoising models. InInt. Conf.
+Mach. Learn., 2025.
+Wu, H., Wu, D., He, T., Guo, J., Ye, Y ., Duan, Y ., and Bian,
+J. Geometry forcing: Marrying video diffusion and 3d
+representation for consistent world modeling. InInt. Conf.
+Learn. Represent., 2026.
+Yu, S., Kwak, S., Jang, H., Jeong, J., Huang, J., Shin, J.,
+and Xie, S. Representation alignment for generation:
+Training diffusion transformers is easier than you think.
+InInt. Conf. Learn. Represent., 2025a.
+Yu, W., Xing, J., Yuan, L., Hu, W., Li, X., Huang, Z., Gao,
+X., Wong, T.-T., Shan, Y ., and Tian, Y . Viewcrafter: Tam-
+ing video diffusion models for high-fidelity novel view
+synthesis. InIEEE Trans. Pattern Anal. Mach. Intell.,
+2025b.
+Zhang, L., Rao, A., and Agrawala, M. Adding conditional
+control to text-to-image diffusion models. InInt. Conf.
+Comput. Vis., 2023.
+Zhang, L., Cai, S., Li, M., Wetzstein, G., and Agrawala, M.
+Frame context packing and drift prevention in next-frame-
+prediction video diffusion models. InThe Thirty-ninth
+Annual Conference on Neural Information Processing
+Systems, 2025a.
+Zhang, Q., Zhai, S., Martin, M. A. B., Miao, K., Toshev, A.,
+Susskind, J., and Gu, J. World-consistent video diffusion
+with explicit 3d modeling. InIEEE Conf. Comput. Vis.
+Pattern Recog., 2025b.
+Zhang, R., Isola, P., Efros, A. A., Shechtman, E., and Wang,
+O. The unreasonable effectiveness of deep features as a
+perceptual metric. InIEEE Conf. Comput. Vis. Pattern
+Recog., 2018.
+Zhou, J. J., Gao, H., V oleti, V ., Vasishta, A., Yao, C.-H.,
+Boss, M., Torr, P., Rupprecht, C., and Jampani, V . Stable
+virtual camera: Generative view synthesis with diffusion
+models. InInt. Conf. Comput. Vis., 2025.
+Zhou, T., Tucker, R., Flynn, J., Fyffe, G., and Snavely,
+N. Stereo magnification: Learning view synthesis using
+multiplane images. InSIGGRAPH,, 2018.
+Zhu, H., Wang, Y ., Zhou, J., Chang, W., Zhou, Y ., Li,
+Z., Chen, J., Shen, C., Pang, J., and He, T. Aether:
+Geometric-aware unified world modeling. InInt. Conf.
+Comput. Vis., 2025.
+10
+550
+551
+552
+553
+554
+555
+556
+557
+558
+559
+560
+561
+562
+563
+564
+565
+566
+567
+568
+569
+570
+571
+572
+573
+574
+575
+576
+577
+578
+579
+580
+581
+582
+583
+584
+585
+586
+587
+588
+589
+590
+591
+592
+593
+594
+595
+596
+597
+598
+599
+600
+601
+602
+603
+604
+SemanticNVS: Improving Semantic Scene Understanding in Generative Novel View Synthesis
+Appendix
+In this supplementary material, we provide additional im-
+plementation details (Section A), evaluation protocols (Sec-
+tion B), and qualitative comparisons (Section D) to comple-
+ment the main paper.
+A. Implementation Details
+This section describes how we approximate the predicted
+clean sample ˆxt
+0 during training, and how we construct a
+timestep-dependent surrogate for extracting DINO features.
+We apply a blur operator (i.e., Gaussian blur) tox0 to approx-
+imate ˆxt
+0 and use the resulting features as a surrogate. We
+observe that the predicted clean sample ˆxt
+0 becomes increas-
+ingly blurred as the diffusion timestep t increases. To ap-
+proximate this effect during training, we set the blur strength
+of the Gaussian blur operator grows with the timestept.
+Concretely, we define the blur standard deviation as:
+τt =τ min + t
+T (τmax −τ min).(A1)
+Following standard practice, we choose an odd kernel size
+proportional toτ t:
+kt = 2 round(3τ t) + 1.(A2)
+We then obtain the surrogate ofx 0 via:
+˜x(t)
+0 =G(x 0;τ t, kt),(A3)
+where G(·;τ, k) denotes Gaussian blur with standard devi-
+ation τ and kernel size k. Finally, we extract DINO fea-
+tures from ˜x(t)
+0 and use them as a surrogate for the DINO
+features of ˆxt
+0. We set the minimum blur standard devia-
+tion τmin = 0.1, and the maximum blur standard deviation
+τmax = 30.
+B. Metrics
+This section introduces the detailed evaluation metrics used
+in our experiments, including metrics to evaluate image
+quality, image-quality drift along the trajectory, and the
+camera control accuracy.
+Image quality.We assess per-frame perceptual quality
+using theImaging Qualitymetric from VBench (Huang
+et al., 2024). Given a generated video V={I t}T
+t=1, we
+follow the official VBench evaluation pipeline to compute a
+frame-wise quality scoreq(I t)and aggregate it over time.
+M(V) = 1
+T
+TX
+t=1
+q(It),(A4)
+where q(·) denotes the VBenchImaging Qualityevaluator
+applied to each frame. We report the dataset-level score by
+averagingM(V)over all test videos.
+Image-quality drift along the trajectory.To quantify
+degradation along the camera trajectory, we adopt the
+drifting measurement in Zhang et al. (2025a) and com-
+pute the start–end contrast for an image-quality metric M
+(i.e.,Imaging Quality):
+∆M
+drift(V) =|M(V start)−M(V end)|,(A5)
+where Vstart ={I t}⌊0.15T⌋
+t=1 and Vend ={I t}T
+t=⌈0.85T⌉ de-
+note the first and last15%frames ofV, respectively.
+Camera control accuracy. To evaluate the accuracy of
+camera control, we assess the alignment between the camera
+poses of generated images and the ground truth camera
+poses, following Yu et al. (2025b). Specifically, we use
+VGGT (Wang et al., 2025) to extract poses from generated
+views. Then we transfer camera poses relative to the first
+frame and normalize translation by the furthest frame. We
+calculate the rotation error RE by comparing ground truth
+and extracted rotation matrices of each generated sequence
+in degrees:
+RE = arccos
+1
+2
+ 
+tr
+ 
+RgenR⊤
+gt
+
+−1
+
+.(A6)
+where R denotes a rotation matrix. We compute translation
+errorTEin meters as:
+TE =∥t gt −t gen∥2 .(A7)
+C. Qualitative Comparison
+Fig. A1 present qualitative comparisons onlongcamera
+trajectories for RealEstate10K. For each sequence, we uni-
+formly sample six generated frames along the trajectory
+ordered left-to-right by time. To further assess the plausibil-
+ity of the generated geometry and camera control accuracy,
+we feed the generated frames into VGGT to obtain a re-
+constructed scene together with the estimated camera poses.
+The top color bar and the camera frustums share the same
+time-based color coding, with the input highlighted in black.
+D. Qualitative Video Comparison
+In theproject page, we show more qualitative video com-
+parisons against baselines.
+11
+605
+606
+607
+608
+609
+610
+611
+612
+613
+614
+615
+616
+617
+618
+619
+620
+621
+622
+623
+624
+625
+626
+627
+628
+629
+630
+631
+632
+633
+634
+635
+636
+637
+638
+639
+640
+641
+642
+643
+644
+645
+646
+647
+648
+649
+650
+651
+652
+653
+654
+655
+656
+657
+658
+659
+SemanticNVS: Improving Semantic Scene Understanding in Generative Novel View Synthesis
+Input
+GTViewCrafterUni3CSEVAOurs
+Time
+Figure A1.Qualitative Comparison on RealEstate10K.
+12
