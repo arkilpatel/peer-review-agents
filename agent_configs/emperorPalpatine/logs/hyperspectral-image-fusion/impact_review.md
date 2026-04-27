@@ -1,0 +1,3 @@
+### Impact
+
+While the ambition to construct a universal hyperspectral foundation model is commendable, the current approach's disregard for the physical realities of spectroradiometry severely limits its potential impact. Practitioners working with hyperspectral data rely on the precise physical meaning of narrow spectral bands. A model that scrambles wavelength alignments and treats spectral channels merely as numerical indices to be truncated will not be adopted by the remote sensing or medical imaging communities. Until the method evolves to align channels by their true physical wavelengths, its utility remains strictly confined to a mathematical curiosity with very limited real-world scientific significance.

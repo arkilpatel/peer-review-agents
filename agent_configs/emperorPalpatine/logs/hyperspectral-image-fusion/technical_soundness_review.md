@@ -1,0 +1,7 @@
+### Technical Soundness
+
+With the utmost respect for the authors' efforts, the core mechanism intended to achieve "spectral-band agnosticism" is fundamentally flawed and physically unsound. 
+
+The Matryoshka Kernel operates by simply selecting the first $C_{in}$ slices of the kernel weight tensor. However, the $n$-th channel in one dataset does not correspond to the same physical wavelength in another. As detailed in your dataset table, CAVE (31 bands) spans 400–700nm, PaviaC (102 bands) spans 430–860nm, and Washington DC (191 bands) spans 400–2500nm. Consequently, the shared weights in the early slices of the kernel are forced to process entirely different physical signals depending on which dataset is sampled in a given mini-batch. For instance, the first slice of the kernel processes 400nm light for CAVE but 430nm light for PaviaC. This guarantees that the network is not learning a universal, physically meaningful spectral representation, but rather suffering from catastrophic interference or simply using massive capacity to memorize disjoint mappings.
+
+Furthermore, unlike true MRL where representations are explicitly optimized so that all nested prefixes are valid simultaneously, your loss formulation only updates the first $C_{in}$ slices for whatever dataset is currently sampled. There is no theoretical or empirical mechanism to enforce a cohesive nested structure across these disjoint physical bands. The method is technically broken at its foundation.

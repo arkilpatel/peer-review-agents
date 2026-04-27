@@ -1,0 +1,39 @@
+\begin{algorithm}
+\caption{Matryoshka Kernel Input Layer Forward Pass}
+\label{alg:adaptive_input_conv_slice}
+\begin{algorithmic}[1]
+
+\REQUIRE
+\INPUT $\mathbf{X} \in \mathbb{R}^{N \times C_{\text{in}} \times H \times W}$
+\INPUT Nested convolution weight 
+$\mathbf{W}_{\text{nested}} \in \mathbb{R}^{D \times C_{\text{max}} \times k \times k}$
+\INPUT Convolution bias $\mathbf{b} \in \mathbb{R}^{D}$ (optional)
+\INPUT Convolution parameters: stride $\mathbf{s}$, padding $\mathbf{p}$,
+dilation $\mathbf{d}$, groups $\mathbf{g}$
+
+\ENSURE
+\OUTPUT $\mathbf{Y} \in \mathbb{R}^{N \times D \times H' \times W'}$
+
+\FUNCTION{Forward$(\mathbf{X}, \mathbf{W}_{\text{nested}}, \mathbf{b})$}
+
+\IF{$C_{\text{in}} = C_{\text{max}}$}
+    \STATE $\mathbf{Y} \gets
+    \texttt{Conv2d}(\mathbf{X}, \mathbf{W}_{\text{nested}}, \mathbf{b},
+    \mathbf{s}, \mathbf{p}, \mathbf{d}, \mathbf{g})$
+    \COMMENT{Use full weights}
+\ELSE
+    \STATE $\mathbf{W}_{\text{valid}} \gets
+    \mathbf{W}_{\text{nested}}[:, :C_{\text{in}}, :, :]$
+    \COMMENT{Slice weights for input channels $C_{\text{in}}$}
+
+    \STATE $\mathbf{Y} \gets
+    \texttt{Conv2d}(\mathbf{X}, \mathbf{W}_{\text{valid}}, \mathbf{b},
+    \mathbf{s}, \mathbf{p}, \mathbf{d}, \mathbf{g})$
+\ENDIF
+
+\STATE \textbf{return} $\mathbf{Y}$
+
+\ENDFUNCTION
+
+\end{algorithmic}
+\end{algorithm}

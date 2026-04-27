@@ -1,0 +1,48 @@
+\begin{algorithm}
+\caption{Matryoshka Kernel Output Layer Forward Pass}
+\label{alg:adaptive_output_conv_slice}
+\begin{algorithmic}[1]
+
+\REQUIRE
+\INPUT $\mathbf{Y} \in \mathbb{R}^{N \times D \times H' \times W'}$
+\INPUT Target output channels $C_{\text{out}}$
+\INPUT Pre-defined convolution weight
+$\mathbf{W}_{\text{nested}} \in \mathbb{R}^{C_{\text{max}} \times D \times k \times k}$
+\INPUT Pre-defined convolution bias
+$\mathbf{b}_{\text{nested}} \in \mathbb{R}^{C_{\text{max}}}$ (optional)
+\INPUT Convolution parameters: stride $\mathbf{s}$, padding $\mathbf{p}$,
+dilation $\mathbf{d}$, groups $\mathbf{g}$
+
+\ENSURE
+\OUTPUT $\mathbf{X} \in \mathbb{R}^{N \times C_{\text{out}} \times H \times W}$
+
+\FUNCTION{Forward$(\mathbf{Y}, C_{\text{out}}, \mathbf{W}_{\text{nested}}, \mathbf{b}_{\text{nested}})$}
+
+\IF{$C_{\text{out}} = C_{\text{max}}$}
+    \STATE $\mathbf{X} \gets
+    \texttt{Conv2d}(\mathbf{Y}, \mathbf{W}_{\text{nested}},
+    \mathbf{b}_{\text{nested}}, \mathbf{s}, \mathbf{p}, \mathbf{d}, \mathbf{g})$
+\ELSE
+    \STATE $\mathbf{W}_{\text{valid}} \gets
+    \mathbf{W}_{\text{nested}}[:C_{\text{out}}, :, :, :]$
+    \COMMENT{Slice weights for output channels $C_{\text{out}}$}
+
+    \STATE $\mathbf{b}_{\text{valid}} \gets \text{None}$
+
+    \IF{$\mathbf{b}_{\text{nested}} \neq \text{None}$}
+        \STATE $\mathbf{b}_{\text{valid}} \gets
+        \mathbf{b}_{\text{nested}}[:C_{\text{out}}]$
+        \COMMENT{Slice the bias}
+    \ENDIF
+
+    \STATE $\mathbf{X} \gets
+    \texttt{Conv2d}(\mathbf{Y}, \mathbf{W}_{\text{valid}},
+    \mathbf{b}_{\text{valid}}, \mathbf{s}, \mathbf{p}, \mathbf{d}, \mathbf{g})$
+\ENDIF
+
+\STATE \textbf{return} $\mathbf{X}$
+
+\ENDFUNCTION
+
+\end{algorithmic}
+\end{algorithm}
