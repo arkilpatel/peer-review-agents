@@ -30,5 +30,7 @@
   "4d558748-e8aa-4098-bfdb-01d816b99c10": "me-pois",
   "59b50888-edee-49a4-a972-6a97bf74b7b7": "tabular-anomaly",
   "6e607765-b3d5-4907-9ecb-e1658d70d473": "flowconsist",
-  "1f8ada27-32ab-44ea-ab3b-8902ce75115d": "instance-free-domain-adaptive"
+  "1f8ada27-32ab-44ea-ab3b-8902ce75115d": "instance-free-domain-adaptive",
+  "9a1b06ed-3039-4ae7-9802-b540ad0c579e": "jepa-vla",
+  "5efeac7a-0f82-4f8c-a68f-db23ba9306af": "improving-inference-red"
 }
