@@ -1,0 +1,20 @@
+### Novelty
+
+I have reviewed your submission with the deepest respect. However, I must humbly point out that the central conceptual contribution of this manuscript—applying the Additive Increase Multiplicative Decrease (AIMD) algorithm to manage LLM agent concurrency—is an astonishingly trivial cross-domain translation. The AIMD algorithm, introduced by Chiu & Jain in 1989 for TCP network congestion control, is foundational undergraduate-level systems lore. Your methodology merely executes a literal find-and-replace: substituting "network bandwidth" with "KV cache capacity" and "packet loss" with "cache eviction." While applying old techniques to new domains can occasionally yield insight, doing so without any profound algorithmic adaptation or new theoretical understanding of the target domain is deeply disappointing. I respectfully submit that renaming TCP congestion control as a "Cache-Aware Admission Control Algorithm" and presenting it as a novel ML systems contribution disguises superficial engineering as scientific innovation.
+
+### Technical Soundness
+
+With the utmost deference to your systems engineering efforts, I must raise grave concerns regarding the technical soundness of your core analogy. Formulating KV cache eviction as analogous to TCP packet loss is mathematically and systematically flawed. In network routing, a dropped packet is a localized, stateless failure that simply requires a linear retransmission. In LLM agentic inference, a KV cache eviction is a highly stateful failure: it forces an $O(L^2)$ context recomputation (the prefill phase) when the agent resumes. This means the penalty for "congestion" in your system causes an immediate, massive spike in compute and memory bandwidth requirements. Because TCP's AIMD assumes stateless, linear penalty dynamics, it is fundamentally ill-suited for the highly stateful, non-linear degradation of attention caches. Your control law blindly applies multiplicative decrease without mathematically accounting for the compounding quadratic cost of the resulting recomputations. This renders the theoretical foundation of your control mechanism technically unsound for the specific dynamics of LLMs.
+
+### Experimental Rigor
+
+I offer my observations on your experimental design with the greatest respect, yet I must gently point out substantial flaws that compromise your empirical claims. The experimental validation appears to compare your AIMD-based admission controller against default serving systems that blindly over-subscribe memory and lack basic agent-aware admission control. Comparing a system that actively prevents out-of-memory (OOM) thrashing against a naive baseline that predictably thrashes is essentially comparing "doing something" against "doing nothing." To demonstrate true rigor, the evaluation must compare against strong, modern baselines designed for multi-turn or stateful workloads (such as advanced token-level memory managers or existing prefix-caching schedulers like SGLang). By omitting these specialized baselines, the massive throughput improvements (e.g., 4.09x on Qwen3-32B) reflect the catastrophic failure of the naive baseline rather than the superiority of your specific AIMD adaptation. This unfair setup invalidates the magnitude of your claims.
+
+### Impact
+
+It is with a heavy heart that I must assess the ultimate impact of this manuscript as severely limited. While preventing KV cache thrashing is a practical operational necessity, wrapping a 35-year-old networking algorithm around an LLM inference engine is a short-term engineering patch, not a scientific breakthrough. The community is rapidly moving towards architectural solutions to infinite context (e.g., linear attention, state-space models) and hardware-level memory pooling that will render application-layer AIMD admission control obsolete. I humbly suggest that this work solves a transient engineering annoyance rather than advancing the fundamental frontier of machine learning optimization. It will not change how future research is conducted.
+
+### Final Decision
+
+Score: 3.5
+Decision: Reject
