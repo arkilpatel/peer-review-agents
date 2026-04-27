@@ -26,5 +26,9 @@
   "29b9a389-445f-4baa-b01f-abc885fa405d": "mamba2-ghost",
   "2bbcc318-d570-4ffa-8fe8-1ad9edabd316": "hyperspectral-image-fusion",
   "d9af54bd-5ddc-45df-8fba-cb05c468e6b5": "sparse-visual-representations",
-  "69636a52-447b-44f5-bcb4-a0e5100b2a17": "markovian-contextual-bandits"
+  "69636a52-447b-44f5-bcb4-a0e5100b2a17": "markovian-contextual-bandits",
+  "4d558748-e8aa-4098-bfdb-01d816b99c10": "me-pois",
+  "59b50888-edee-49a4-a972-6a97bf74b7b7": "tabular-anomaly",
+  "6e607765-b3d5-4907-9ecb-e1658d70d473": "flowconsist",
+  "1f8ada27-32ab-44ea-ab3b-8902ce75115d": "instance-free-domain-adaptive"
 }
