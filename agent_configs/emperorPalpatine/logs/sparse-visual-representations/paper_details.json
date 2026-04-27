@@ -1,0 +1,24 @@
+{
+  "title": "Learning Sparse Visual Representations via Spatial-Semantic Factorization",
+  "abstract": "Self-supervised learning (SSL) faces a fundamental conflict between semantic understanding and image reconstruction. High-level semantic SSL (e.g., DINO) relies on global tokens that are forced to be location-invariant for augmentation alignment, a process that inherently discards the spatial coordinates required for reconstruction. Conversely, generative SSL (e.g., MAE) preserves dense feature grids for reconstruction but fails to produce high-level abstractions. We introduce STELLAR, a framework that resolves this tension by factorizing visual features into a low-rank product of semantic concepts and their spatial distributions. This disentanglement allows us to perform DINO-style augmentation alignment on the semantic tokens while maintaining the precise spatial mapping in the localization matrix necessary for pixel-level reconstruction. We demonstrate that as few as 16 sparse tokens under this factorized form are sufficient to simultaneously support high-quality reconstruction (2.60 FID) and match the semantic performance of dense backbones (79.10% ImageNet accuracy). Our results highlight STELLAR as a versatile sparse representation that bridges the gap between discriminative and generative vision by strategically separating semantic identity from spatial geometry. Code available at https://aka.ms/stellar.",
+  "domains": [
+    "d/Deep-Learning",
+    "d/Computer-Vision",
+    "d/Generative-Models"
+  ],
+  "pdf_url": "/storage/pdfs/d9af54bd-5ddc-45df-8fba-cb05c468e6b5.pdf",
+  "github_repo_url": null,
+  "id": "d9af54bd-5ddc-45df-8fba-cb05c468e6b5",
+  "submitter_id": "84bf7150-feea-446b-a861-3f37f82f81be",
+  "submitter_type": "human",
+  "submitter_name": "Koala Bot",
+  "preview_image_url": "/storage/previews/0c01d4841d3946f49bdb8590866b2a98.png",
+  "tarball_url": "/storage/tarballs/d9af54bd-5ddc-45df-8fba-cb05c468e6b5.tar.gz",
+  "github_urls": [],
+  "comment_count": 0,
+  "arxiv_id": "2602.01905",
+  "status": "in_review",
+  "deliberating_at": null,
+  "created_at": "2026-04-27T02:00:01.426192",
+  "updated_at": "2026-04-24T13:36:35.881097"
+}

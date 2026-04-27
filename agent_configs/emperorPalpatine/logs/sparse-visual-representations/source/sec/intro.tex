@@ -1,0 +1,78 @@
+\section{Introduction}
+
+Learning visual representations has been a central pursuit in computer vision since the advent of deep learning~\citep{bengio2013representation}. Modern vision models encode raw pixels into latent features powering nearly all downstream applications. Despite advances from early convolutional networks~\citep{CNN} to ResNets~\citep{he2016deep} and vision transformers (ViTs)~\citep{dosovitskiy2020image}, the geometric format of visual representation has remained largely unchanged: a dense 2D grid of high-dimensional features, where each vector is tied to a local patch. This design is intuitive, as it mirrors the grid-like arrangement of pixels.
+
+On the other hand, the field faces a longstanding dilemma: the pursuit of a unified, \textit{holistic} representation that excels at both high-level semantic understanding and low-level reconstruction. While this synthesis has succeeded in natural language processing, where reconstruction tasks like bidirectional masking (BERT~\cite{devlin2019bert}) or autoregressive modeling (GPT~\cite{brown2020language}) naturally induce superior semantics, it doesn't directly transfer to the vision domain. Representations learned primarily through image reconstruction (e.g., MAE~\citep{he2022masked}, SimMIM~\cite{xie2022simmim}) often yield semantics that trail behind contemporary state-of-the-art methods. Consequently, recent self-supervised learning (SSL) approaches have largely diverged into two camps: those prioritizing pixel-level grounding via reconstruction, and those prioritizing rich semantics via joint-embedding invariance~\cite{van2025joint}.
+
+We argue that this divergence stems from an \textit{Invariance Paradox} inherent to the dense grid format. For a dense representation to faithfully reconstruct an image, it must preserve precise spatial information which are inherently \textit{equivariant} to transformations like cropping or shifting. Conversely, high-level semantics are \textit{invariant} to such transformations. Traditional SSL methods such as DINO~\cite{caron2021emerging} attempt to force invariance onto global representations obtained from these dense grids. This creates a fundamental conflict: the model is pressured to discard spatial variance to achieve semantic alignment, yet the dense grid format requires equivariance for spatial grounding.
+
+In this work, we show that this paradox is not an inevitable trade-off, but a byproduct of the dense representation itself. By moving away from the 2D grid towards a \textit{sparse, factorized latent representation}, we can jointly achieve high-fidelity reconstruction and rich semantics. Our key insight is that the information necessary to describe a scene can be disentangled into two complementary, sparse factors:
+\begin{enumerate}
+    \item \textbf{The ``What''}: A set of sparse latent tokens representing invariant visual concepts.
+    \item \textbf{The ``Where''}: A set of equivariant coefficients representing their spatial locations.
+\end{enumerate}
+
+
+
+By disentangling these factors through a low-rank matrix factorization form, we enable a ``semantic triage'': the model is forced to reconstruct the entire image using a highly compressed bottleneck. This encourages the model to ignore stochastically redundant background pixels and focus on semantically-rich object regions. We propose \textbf{STELLAR}, a framework that achieves high-quality reconstruction from as few as 16 tokens while encoding fine-grained semantics in a fully self-supervised manner.
+
+Our contributions are summarized as follows:
+\begin{itemize}
+    \item \textbf{Sparse Representation}: We propose STELLAR, an efficient form of vision modeling that factorizes an image into a handful of sparse tokens by disentangling \textit{what} concepts are present from \textit{where} they are located.
+    \item \textbf{SSL Method}: We introduce a training scheme to learn these representations without annotation. By aligning visual concepts across views using optimal transport, we enforce invariance in the ``what'' factor while adapting the ``where'' factor, inducing rich semantics.
+    \item \textbf{Empirical Observations}: (i) STELLAR achieves a state-of-the-art balance of semantics (IN-1K linear acc. 79.10\%) and reconstruction (FID 2.60), outperforming prior approaches. (ii) Our sparse image modeling induces fine-grained, region-aware semantics even without explicit dense supervision, outperforming prior work with similar training budget.
+\end{itemize}
+
+% \section{Introduction}
+
+% Learning visual representations has been a central pursuit in computer vision since the advent of deep learning~\citep{bengio2013representation}. Modern vision models transform raw pixels into latent features that power nearly all downstream applications. Architectures have evolved dramatically—from early convolutional networks~\citep{CNN} to ResNets~\citep{he2016deep} and, more recently, vision transformers (ViTs)~\citep{dosovitskiy2020image}. Despite these advances, the geometric format of visual representation has remained largely unchanged: a dense 2D grid of high-dimensional features, each tied to a local patch of the image. This design is natural, since pixels are arranged on a grid.
+
+% However, dense representations are highly redundant, as the number of meaningful objects or regions in an image is far smaller than the number of pixels or patches. Prior work has shown that images can be reconstructed from only a small subset of patches~\citep{he2022masked}. Motivated by this redundancy, several methods have already adopted sparse representations in downstream tasks. For instance, Sparse R-CNN~\citep{sun2021sparse}, DETR~\citep{carion2020end}, and MaskFormer~\citep{cheng2021per} learn a set of queries from detection or segmentation labels. BLIP-2~\citep{li2023blip} introduced a Q-Former to extract sparse tokens under paired image–text supervision. TiTok~\citep{yu2024image} represents images as sparse 1D tokens for efficient reconstruction and generation, but the semantic quality of these features still lags behind state-of-the-art self-supervised methods.
+
+% We take a different path: learning sparse representations directly from images in a fully self-supervised manner~\citep{caron2021emerging, oquab2023dinov2, simeoni2025dinov3, chen2020simple, chen2021exploring, caron2020unsupervised, grill2020bootstrap}. Our goal is to obtain a compact set of tokens that support high-quality image understanding and reconstruction at the same time, without human labels or paired data. 
+
+% To this end, we revisit the fundamentals of visual representation. At its core, perception requires two complementary pieces of information:
+% \begin{itemize}
+% \item[1.] What objects or visual concepts are present.
+% \item[2.] Where they are located.
+% \end{itemize}
+% The two are unified in forming a holistic representation, but separable in how they behave: the “what” should remain invariant across views, while the “where” changes with viewpoint. Motivated by this principle, we propose to represent an image in the form of low-rank matrix factorization that disentangles these factors. This formulation enables efficient reconstruction from as few as 8 tokens and allows learning the sparse tokens to encode fine-grained semantics in a self-supervised way.
+
+% Our contributions can be summarized as follows:
+% \begin{itemize}
+    
+%     \item \textbf{Sparse vision representation framework}: We propose STELLAR, an efficient form of latent vision representation modeling an image with only a handful of sparse tokens, by disentangling \textit{what} concepts are present and \textit{where} are they located. The latent representation with as few as 8 tokens can achieve both detailed pixel reconstruction and high-level semantic understanding at the same time.
+    
+%     \item \textbf{Self-supervised learning method}: We introduce a self-supervised training scheme that learns the sparse latent vision representation without annotation. By discovering and aligning multiple visual concepts across views using optimal transport, we enforces invariance in the “what” while adapting the “where,” inducing rich semantic representation.
+    
+%     \item \textbf{Observations}: (i) STELLAR surpasses prior sparse representation approaches by jointly achieving strong semantic understanding (IN-1k lin. acc. 79.10\%) and high-quality reconstruction (FID 2.60). (ii) The sparse image modeling framework induces fine-grained, region-aware semantics even without explicit supervision on the dense feature map, which transfers effectively to downstream tasks with simple linear probing.
+% \end{itemize}
+
+
+
+% Ever since the dawn of deep learning, learning vision representation has been the centric of many computer vision fields \citep{bengio2013representation}. Using deep neural networks to encode images from raw pixel values to latent representations has been the cornerstone in almost all computer vision applications. Over the years, vision model architecture has evolved from early convolution neural networks \citep{CNN} to ResNet \citep{he2016deep} and to vision transformers\citep{dosovitskiy2020image}. Despite enormous progress in vision architecture serving as the backbone for numerous downstream applications, the geometric format of vision representation has remained largely unchanged. Current model architectures tend to involve dense grids of high dimensional feature vectors, each representing the corresponding down-sampled region. Indeed, such form of dense representation is straightforward as the raw pixel values are recorded on a 2D grid. 
+
+%  % In addition to the dense feature map, a global feature is used, either by pooling the dense features or adding a CLS token to transformers, to represent ``what'' is the image. On the other hand, classification tasks that recognize ``what'' is the image was traditionally dominating the field, favoring a single global representation \RT{Is this referring to object-centric images?}.
+
+% %Self-supervised pretraining techniques also evolved from vanilla autoencoder to self-distillation \RT{(not clear what self-distillation means here)}, including methods adapted from natural language processing (NLP), such as masked token reconstruction and next patch prediction. 
+
+% However, such form of dense representation is redundant, as the actual number of objects or stuffs in an image is usually much less than the number of pixels or patches. Evidence appeared in many studies, e.g. an image can be reconstructed from a small number of randomly selected patches~\citep{he2022masked}. Although the vision backbones to date have mostly been dense, sparse image modeling has appeared in many downstream applications. Fine-grained image understanding models from Sparse R-CNN~\citep{sun2021sparse}, DETR~\citep{carion2020end} to MaskFormer~\citep{cheng2021per} were designed to learn sparse queries from detection or segmentation annotations. BLIP-2~\cite{li2023blip} uses a Q-Former to extract sparse tokens for efficient image representation, which are learned from paired image-text data. Most recently, TiTok~\citep{yu2024image} uses sparse 1D tokens to represent an image for efficient reconstruction and generation. 
+
+% % However, this form of representation is different from how a human perceives visual information. Instead of understanding an image with dense description of ``what is at every location'', sparse concepts are abstracted to summarize the image, along with their localization in the image. 
+
+% % \RT{(Moving this paragraph up to be third might make the connection to paragraph 2 and your contributions stronger.)} 
+
+% Instead of relying on human annotation or text, we attempt to learn sparse representations from vision-only self-supervised learning (SSL)~\citep{caron2021emerging, oquab2023dinov2, simeoni2025dinov3, chen2020simple, chen2021exploring, caron2020unsupervised, grill2020bootstrap}, aiming for high-quality image understanding, reconstruction, and language alignment at the same time. We approach the problem by rethinking the fundamental principle of visual information representation. As vision embodies our perception of the physical world , it suffices to describe an image with
+% \begin{itemize}
+%     \item[1] \textit{What objects/visual concepts are in the image,} \quad and \quad 2 \textit{Where are they located}.
+% \end{itemize}
+
+% The two types of information are unifie and separated at the same time. On one hand, one needs both information to extract a holistic representation of an image. On the other hand, the ``\textit{what}'' part can remain invariant under different views, while the ``\textit{where}'' part should change accordingly. Therefore, we propose to represent the latent space in the form of low-rank matrix factorization which disentangles the two types of information. This simple yet effective format enabled efficient reconstruction from as few as 8 tokens tokens, and also facilitates learning fine-grained semantic information in fully self-supervised manner.
+
+% % we are able to , as well as learn semantic rich features for image understanding tasks. \RT{Maybe you can include some relative performance gains over sota models on downstream tasks here.}
+
+
+
+% Self-supervised learning (SSL) has become the corner stone of modern machine learning models, and led to huge success in building powerful artificial intelligence such as large language models. In natural language processing (NLP), simply training the model to generate the next token from previous context, or predict randomly masked tokens can teach the model to learn concepts for language understanding, which are essential in conducting downstream tasks. Such simple and scalable reconstruction task let the model to learn concepts from data without annotation.
+
+% However, simply adapting these successful approaches to vision domain, such as randomly masked or autoregressive patch reconstruction, often leads to suboptimal representation in terms of understanding.  Modern vision model represent an image in a 2D grid, and treat each patch on the grid as a token similar to the counterpart in NLP. However, the features learned from directly applying the successful approaches in NLP, such as randomly masked or autoregressive patch reconstruction, are often sub-optimal. 

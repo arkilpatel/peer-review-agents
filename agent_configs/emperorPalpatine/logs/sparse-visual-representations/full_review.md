@@ -1,0 +1,24 @@
+### Novelty
+
+While the manuscript presents "STELLAR" as a novel framework for learning sparse visual representations, a closer inspection reveals that the core components are highly derivative of existing literature. The proposed "spatial-semantic factorization" $\mathbf{Z} = \mathbf{L} \mathbf{S}$—where semantic latents are multiplied by spatial assignments—is fundamentally identical to the cross-attention bottlenecks found in prior object-centric and sparse representation architectures such as Slot Attention (Locatello et al., 2020), DETR, and TokenLearner (Ryoo et al., 2021). Learning a small set of tokens and a spatial attention map over the image to reconstruct features is a well-trodden path.
+
+Furthermore, the self-supervised learning objective applied to these sparse tokens relies on Sinkhorn-Knopp clustering and alignment. This is a direct application of the SwAV (Caron et al., 2020) and DINO paradigms to the learned tokens. Thus, the work is essentially a combination of existing cross-attention tokenization methods with existing joint-embedding clustering objectives. While combining these elements may be practically useful, marketing this as a fundamentally new representation framework ("escaping the Invariance Paradox") overstates the conceptual novelty.
+### Technical Soundness
+
+With all due respect to the authors, the theoretical premise used to justify the method—the so-called "Invariance Paradox"—is poorly resolved by the proposed factorization. The manuscript claims that by factoring the representation into $\mathbf{L} \mathbf{S}$, the spatial equivariance is "offloaded entirely" to the localization matrix $\mathbf{L}$, while the semantic tokens $\mathbf{S}$ remain invariant. 
+
+However, $\mathbf{L}$ is an $n \times r$ dense matrix representing spatial assignments, and $\mathbf{S}$ is an $r \times d$ matrix. If $\mathbf{S}$ is strictly invariant to transformations (e.g., containing only global scene statistics or concept prototypes) and $r$ is very small (e.g., $r=16$), then $\mathbf{L}$ must act as a dense map that routes these 16 global colors/concepts back to the grid. Reconstructing a complex image with 2.60 FID from a 16-element palette using just an assignment matrix is impossible unless the decoder is doing the vast majority of the heavy lifting. In that case, the factorized representation is simply a highly lossy bottleneck, not an elegant resolution of equivariance and invariance. Alternatively, if the decoder is lightweight, $\mathbf{L}$ must smuggle the precise spatial textures, which means it requires the exact same dense grid-based equivariance you criticize in standard models. You have not escaped the paradox; you have merely shifted the dense equivariance requirement from the features themselves to the attention map $\mathbf{L}$, while forcing the semantic tokens into a bottleneck.
+### Experimental Rigor
+
+I must raise significant concerns regarding the fairness of your empirical comparisons.
+
+In the implementation details, it is revealed that in the default setting, the ViT encoder is initialized from a public MAE checkpoint. Yet, in Table 1, STELLAR is compared directly against MAE and TiTok. It is highly misleading to compare a model that starts from a pretrained MAE checkpoint—and is then further fine-tuned with joint-embedding clustering objectives (Sinkhorn-Knopp)—against MAE itself. Naturally, adding a DINO/SwAV-style objective on top of MAE features will yield richer semantics. This improvement comes from the additional self-supervised clustering phase, not necessarily the sparse factorization.
+
+To make a scientifically valid claim about the superiority of STELLAR's sparse tokens over dense representations, the main benchmarking must compare models trained from scratch under identical computational budgets. Relegating the "from scratch" results to an ablation study while presenting the MAE-initialized results as the primary achievement fundamentally obscures the true source of the performance gains.
+### Impact
+
+While the goal of achieving high-quality reconstruction and strong semantics simultaneously is important, the reliance on a two-stage approach (initializing from a foundation prior like MAE) limits the ultimate impact of this work. Rather than presenting a new foundational self-supervised learning paradigm that unifies generative and discriminative learning from the ground up, the method acts more as a feature distillation or compression technique applied to already-trained representations. While useful for reducing token counts, it does not fundamentally change how we pretrain vision models. The community is unlikely to adopt this as a primary pretraining objective when it relies so heavily on the priors established by the very dense models it seeks to replace.
+
+
+**Score:** 3.5
+**Decision:** Reject
