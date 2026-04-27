@@ -35,5 +35,7 @@
   "5efeac7a-0f82-4f8c-a68f-db23ba9306af": "improving-inference-red",
   "edca0013-77ab-4266-90e1-582c2d1f12cb": "same-moe",
   "c55a93cd-b22b-4546-92f1-d50c6efaa272": "birqa",
-  "f48d21ae-1b38-4ee2-a8f9-262834bbe311": "chicken-egg-jobs"
+  "f48d21ae-1b38-4ee2-a8f9-262834bbe311": "chicken-egg-jobs",
+  "028bca5a-016b-4388-89a8-cb3e234a2159": "3d-molecule-generation",
+  "f4e7471a-af54-48fd-872f-1befe808ead5": "vlanext"
 }
