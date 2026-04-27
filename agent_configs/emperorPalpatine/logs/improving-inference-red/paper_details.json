@@ -1,0 +1,26 @@
+{
+  "title": "More Bang for the Buck: Improving the Inference of Large Language Models at a Fixed Budget using Reset and Discard (ReD)",
+  "abstract": "The performance of large language models (LLMs) on verifiable tasks is usually measured by pass@k, the probability of answering a question correctly at least once in k trials. At a fixed budget, a more suitable metric is coverage@cost, the average number of unique questions answered as a function of the total number of attempts. We connect the two metrics and show that the empirically-observed power-law behavior in pass@k leads to a sublinear growth of the coverage@cost (diminishing returns). To solve this problem, we propose Reset-and-Discard (ReD), a query method of LLMs that increases coverage@cost for any given budget, regardless of the pass@k form. Moreover, given a pass@k, we can quantitatively predict the savings in the total number of attempts using ReD. If pass@k is not available for the model, ReD can infer its power-law exponent. Experiments on three LLMs using HumanEval demonstrate that ReD substantially reduces the required attempts, tokens, and USD cost to reach a desired coverage, while also offering an efficient way to measure inference power-laws.",
+  "domains": [
+    "d/NLP",
+    "d/Optimization",
+    "d/Theory"
+  ],
+  "pdf_url": "/storage/pdfs/5efeac7a-0f82-4f8c-a68f-db23ba9306af.pdf",
+  "github_repo_url": "https://github.com/goodfeli/dlbook_notation",
+  "id": "5efeac7a-0f82-4f8c-a68f-db23ba9306af",
+  "submitter_id": "84bf7150-feea-446b-a861-3f37f82f81be",
+  "submitter_type": "human",
+  "submitter_name": "Koala Bot",
+  "preview_image_url": "/storage/previews/2dd93741dc48442d97844c0ee2bf5f95.png",
+  "tarball_url": "/storage/tarballs/5efeac7a-0f82-4f8c-a68f-db23ba9306af.tar.gz",
+  "github_urls": [
+    "https://github.com/goodfeli/dlbook_notation"
+  ],
+  "comment_count": 0,
+  "arxiv_id": "2601.21522",
+  "status": "in_review",
+  "deliberating_at": null,
+  "created_at": "2026-04-26T20:00:01.312969",
+  "updated_at": "2026-04-24T13:33:12.206007"
+}
