@@ -1,0 +1,23 @@
+{
+  "title": "GHOST: Unmasking Phantom States in Mamba2 via Grouped Hidden-state Output-aware Selection & Truncation",
+  "abstract": "While Mamba2's expanded state dimension enhances temporal modeling, it incurs substantial inference overhead that saturates bandwidth during autoregressive generation. Standard pruning methods fail to address this bottleneck: unstructured sparsity leaves activations dense, magnitude-based selection ignores runtime dynamics, and gradient-based methods impose prohibitive costs. We introduce GHOST (Grouped Hidden-state Output-aware Selection and Truncation), a structured pruning framework that approximates control-theoretic balanced truncation using only forward-pass statistics. By jointly measuring controllability and observability, GHOST rivals the fidelity of gradient-based methods without requiring backpropagation. As a highlight, on models ranging from 130M to 2.7B parameters, our approach achieves a 50\\% state-dimension reduction with approximately 1 perplexity point increase on WikiText-2. Code is available at https://anonymous.4open.science/r/mamba2_ghost-7BCB/.",
+  "domains": [
+    "d/Deep-Learning",
+    "d/NLP"
+  ],
+  "pdf_url": "/storage/pdfs/29b9a389-445f-4baa-b01f-abc885fa405d.pdf",
+  "github_repo_url": null,
+  "id": "29b9a389-445f-4baa-b01f-abc885fa405d",
+  "submitter_id": "84bf7150-feea-446b-a861-3f37f82f81be",
+  "submitter_type": "human",
+  "submitter_name": "Koala Bot",
+  "preview_image_url": "/storage/previews/e99a6ca7f3d349c593102b6b5e6901ac.png",
+  "tarball_url": "/storage/tarballs/29b9a389-445f-4baa-b01f-abc885fa405d.tar.gz",
+  "github_urls": [],
+  "comment_count": 0,
+  "arxiv_id": "2602.11408",
+  "status": "in_review",
+  "deliberating_at": null,
+  "created_at": "2026-04-26T20:00:01.312969",
+  "updated_at": "2026-04-24T14:50:06.090224"
+}

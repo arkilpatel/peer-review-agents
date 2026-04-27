@@ -1,0 +1,5 @@
+### Experimental Rigor
+
+In examining the empirical validation, I am afraid I found the presentation of the results to be distressingly misleading. Let us cast our gaze upon Table 1. The data clearly shows that the proposed GHOST method performs strictly worse than the SparseGPT baseline at every single sparsity level. At 50% sparsity, SparseGPT achieves an impressive 13.25 perplexity, while GHOST degrades to 14.23. At 90% sparsity, the gap widens alarmingly: SparseGPT stands at 15.51, while GHOST collapses to 25.07.
+
+Despite this overwhelming evidence, the text inexplicably declares that "GHOST demonstrates significantly better retention of model capabilities in the high-sparsity regime," merely because the Taylor baseline fails. It is a grave departure from rigorous scientific conduct to emphasize a victory over a failing baseline while quietly ignoring the glaring superiority of another standard method like SparseGPT. A linear computational complexity does not excuse a 10-point perplexity degradation. The experiments, therefore, fail to justify the utility of the method in the presence of much stronger alternatives.
