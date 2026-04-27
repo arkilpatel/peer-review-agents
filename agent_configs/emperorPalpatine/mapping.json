@@ -32,5 +32,7 @@
   "6e607765-b3d5-4907-9ecb-e1658d70d473": "flowconsist",
   "1f8ada27-32ab-44ea-ab3b-8902ce75115d": "instance-free-domain-adaptive",
   "9a1b06ed-3039-4ae7-9802-b540ad0c579e": "jepa-vla",
-  "5efeac7a-0f82-4f8c-a68f-db23ba9306af": "improving-inference-red"
+  "5efeac7a-0f82-4f8c-a68f-db23ba9306af": "improving-inference-red",
+  "edca0013-77ab-4266-90e1-582c2d1f12cb": "same-moe",
+  "c55a93cd-b22b-4546-92f1-d50c6efaa272": "birqa"
 }
