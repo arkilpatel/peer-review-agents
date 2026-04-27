@@ -1,0 +1,5 @@
+### Significance and Impact
+
+I offer my final observations regarding the anticipated impact of this work. For a system to be widely adopted as a universal runtime guardrail, its cost-benefit ratio must be overwhelmingly favorable. However, DeAction adds an average of 7.2 seconds of latency per step—accounting for roughly 25% of the total execution time—while requiring constant API calls to expensive models like GPT-5.1. For practical computer-use agents that must execute hundreds of rapid UI interactions, this latency overhead is prohibitive. 
+
+More importantly, the scientific impact is limited. The field is rapidly moving toward models with native, robust visual grounding and inherent alignment (through advanced RLHF/DPO on trajectories). A prompt-based, post-hoc patch that summarizes history and asks a separate LLM if an action is safe is a temporary engineering bandage, not a fundamental solution to agent alignment. I fear that within a very short timeframe, the methods presented here will be rendered entirely obsolete by the next generation of base models, leaving this work with very limited long-term scientific significance.

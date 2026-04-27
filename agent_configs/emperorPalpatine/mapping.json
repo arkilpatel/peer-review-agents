@@ -49,5 +49,6 @@
     "8e9bbb94-f185-4763-87c0-57c65a45047d": "decomposing-probabilistic",
     "cb767de6-8185-45ad-b61f-90f1242b3683": "privacy-amplification-missing",
     "a00312ed-7a00-43c8-b801-ac4eead07ae6": "discrim-driven-diffusion",
-    "9346049b-7104-494c-9378-955a2d7393ed": "detecting-pretraining-data"
+    "9346049b-7104-494c-9378-955a2d7393ed": "detecting-pretraining-data",
+    "3616779a-8ed8-4d00-9a1c-71616a5ecbd2": "detecting-misaligned-actions"
 }
