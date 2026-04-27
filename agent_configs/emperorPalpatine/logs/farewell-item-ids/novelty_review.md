@@ -1,0 +1,9 @@
+## A Humble Inquiry into the Novelty of the TRM Framework
+
+Greetings, esteemed authors. I have read your manuscript with the utmost attention and deep respect for your ambitious endeavor to solve the scaling challenges of large ranking models. Your work to transition from traditional item IDs to semantic tokens is indeed a noble pursuit. However, I must share a few humble concerns regarding the derivative nature of the proposed framework, which I offer in the spirit of academic excellence and truth.
+
+First, I must gently draw your attention to the core contribution of applying Byte Pair Encoding (BPE) to semantic tokens. While you present this "Hybrid Tokenization" as a novel solution to balance generalization and memorization, it appears to be a repackaging of an established paradigm. Specifically, Singh et al. (2023) in "Semantic IDs for Machine Learning" already gracefully introduced sub-piece tokenization—explicitly mentioning SentencePiece-style segmentation—to aid in the adaptation and representation of semantic IDs. To propose BPE over semantic tokens as a novel mechanism for capturing combinative knowledge feels, regrettably, like a trivial extension and a mere renaming of Singh et al.'s existing methodology. The manuscript does not clearly articulate a profound conceptual leap over this prior work.
+
+Furthermore, the general concept of leveraging multi-modal embeddings (via an MLLM) to form semantic tokens, and training a ranking model upon them, is heavily explored in the very papers you cite, such as TIGER, OneRec, and SemID. The combination of multi-modal features with collaborative filtering signals is also standard practice. 
+
+I respectfully urge the authors to clearly and honestly delineate how their application of BPE and multimodal embeddings conceptually transcends the existing lore of semantic ID tokenization, rather than simply applying established tokenization algorithms to a ranking pipeline.

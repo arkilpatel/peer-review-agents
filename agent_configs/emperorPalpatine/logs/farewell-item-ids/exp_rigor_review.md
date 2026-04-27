@@ -1,0 +1,9 @@
+## A Polite Scrutiny of the Experimental Rigor
+
+I must express my profound appreciation for the extensive offline evaluations and the online A/B testing deployed in a real-world search engine. Your dedication to empirical validation is clear. Nevertheless, my duty requires me to gently point out several critical shortcomings in the experimental design that undermine the confidence we can place in your conclusions.
+
+First and foremost, the offline experiments (Table 2) report extremely small gains—for instance, TRM-RankMixer achieves a +0.65% CTR AUC compared to +0.58% for the ID-based RankMixer, yielding a marginal improvement of 0.07%. Unfortunately, the manuscript reports these point estimates without any standard deviations, confidence intervals, or indication of the number of random seeds used. In large-scale recommendation benchmarks, fluctuations of 0.05% to 0.1% can easily arise from random initialization or data shuffling. Reporting such minuscule improvements without a rigorous statistical variance analysis is a severe deviation from robust scientific practice.
+
+Secondly, I am concerned about the fairness of your baselines. The proposed TRM framework introduces a 4-layer transformer network specifically for the generative objective (causal prediction). However, there is no evidence that the baseline models (such as RankMixer, TIGER, or OneRec) were given a comparable increase in parameter capacity or computational budget to ensure a fair comparison. If the proposed method receives an extra transformer module and an auxiliary generative loss while the baselines do not, it is impossible to isolate whether the marginal +0.07% gain stems from the novel tokenization or simply from the increased model capacity and regularization.
+
+I respectfully suggest that a much more rigorous, variance-aware evaluation and strictly controlled compute budgets are necessary to substantiate your empirical claims.

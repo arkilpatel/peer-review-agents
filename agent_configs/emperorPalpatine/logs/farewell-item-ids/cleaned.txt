@@ -1,0 +1,472 @@
+
+\documentclass{article}
+
+\usepackage{microtype}
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{booktabs} % for professional tables
+
+\usepackage{hyperref}
+
+
+\newcommand{\theHalgorithm}{\arabic{algorithm}}
+
+
+\usepackage{icml2026}
+
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{mathtools}
+\usepackage{amsthm}
+\usepackage{multirow}
+\usepackage{pdfpages}
+\usepackage{graphicx}
+\usepackage[capitalize,noabbrev]{cleveref}
+
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{assumption}[theorem]{Assumption}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+\usepackage{enumitem}
+\usepackage{booktabs} 
+
+\usepackage[textsize=tiny]{todonotes}
+
+
+\begin{document}
+
+\twocolumn[
+  \icmltitle{Farewell to Item IDs: Unlocking the Scaling Potential of Large Ranking Models via Semantic Tokens}
+
+\begin{center}
+\large
+    \textbf{Zhen Zhao$^{*}$, Tong Zhang$^{*}$, Jie Xu, Qingliang Cai, Qile Zhang, Leyuan Yang,  \\ Daorui Xiao$^{\dagger}$,
+    Xiaojia Chang} \\
+    \vskip 0.1in
+    \large
+    \textbf{ByteDance} \\
+    \normalsize
+    \{zhaozhen.0718, zhangtong.z,  xiaodaorui\}\text{@}bytedance.com
+\end{center}
+
+
+
+
+
+
+
+
+  \vskip 0.3in
+]
+
+
+
+
+
+
+
+
+
+
+\newcommand{\blfootnote}[1]{%
+  \begingroup
+  \renewcommand{\thefootnote}{}%
+  \footnote{#1}%
+  \addtocounter{footnote}{-1}%
+  \endgroup
+}
+
+
+
+
+\begin{abstract}
+
+Recent studies on scaling up ranking models have achieved substantial improvement for recommendation systems and search engines. However, most large-scale ranking systems rely on item IDs, where each item is treated as an independent categorical symbol and mapped to a learned embedding. As items rapidly appear and disappear, these embeddings become difficult to train and maintain. This instability impedes effective learning of neural network parameters and limits the scalability of ranking models. In this paper, we show that semantic tokens possess greater scaling potential compared to item IDs. Our proposed framework TRM improves the token generation and application pipeline, leading to 33\% reduction in sparse storage while achieving 0.85\% AUC increase. Extensive experiments further show that TRM could consistently outperform  state-of-the-art models when model capacity scales.
+Finally, TRM has been successfully deployed on large-scale personalized search engines, yielding 0.26\% and 0.75\% improvement on user active days and change query ratio respectively through A/B test.
+  
+\end{abstract}
+
+
+
+
+
+
+
+
+\section{Introduction}
+
+\blfootnote{$*$: Equal contribution. $\dagger$: The corresponding author.}
+
+Large Ranking Models (LRMs) serve as the backbone of modern recommendation systems [CITE] and search engines[CITE], playing a pivotal role in efficient information distributing.
+
+Recently, scaling up model parameters in LRMs has become a promising approach for developing ranking models[CITE]. Inspired by the success of scaling law in LLM[CITE], recent efforts focus on creating the most comprehensive model architecture for dense parameter scaling[CITE]. However, the dynamic and unstable nature of categorical features of item IDs prevents efficient knowledge sharing: newly introduced IDs often suffer from cold-start problem, while old retired IDs discard all previously learned knowledge [CITE]. Therefore, the rapid and dramatic shifting of the ID-based feature distribution hinders the learning of dense parameters, particularly in large-scale ranking systems [CITE]. As a result, the effectiveness and capability of scaling up dense parameters is compromised.
+
+[FIGURE]
+
+In contrary, we propose to achieve scaling up dense parameters by replacing item IDs with semantic tokens[CITE]. One of our key observations is that, semantic tokens construct a structural closed set, which is relatively more stable and smooth during training. As shown in Figure [REF], we use norm variance [CITE] to measure the distribution change of ID embedding and token embedding. It is clear that semantic tokens have a more stable distribution during training as the number of parameter scales. In Sec [REF] we present a theoretical analysis about the connection between semantic tokens and scaling up performance based on 1) the famous scaling law [CITE] $L \propto N^{-\beta}$ and 2) the power analysis of the scaling law[CITE].
+
+Contradictory to our initial expectations, the experiments demonstrate that naively replacing item IDs with current semantic tokens in existing ranking models leads to immediate drop in performance, although this degradation diminishes as dense parameters increase. We provide three fundamental insights followed for this phenomenon. First, current semantic tokens typically incorporate their multi-modal information (image and text about the item, {\it etc}) for residual clustering, while ignoring the user-action domain that contains fundamentally different structural information from the vision/language/audio domain. Second, our experiments show that existing semantic tokens trade the memorization capability for better generalization performance due to coarse-grained clustering. Therefore, the ranking model fails to capture fine-grained combinative knowledge, leading to degraded performance for frequently occurring old items. Third, current approach directly combine the semantic tokens of the item for input features, neglecting the structural information inside the token sequence.
+
+To solve the above problems, we propose a novel token-based scaling up framework for ranking models, named TRM (Token-based Recommendation Model). Specifically, we develop a collaborative-filtering method to integrate user-action information into the original vision-language embedding model, enabling the semantic tokens clustered in both multi-modal and personalization domain. To address memorization issue, we propose independently learning each item's combinatorial knowledge, which can better balance between generalization and memorization of semantic tokens. Lastly, we developed a novel training framework that jointly optimizes the discriminative and the generative objectives. This framework not only leverages the accuracy of discriminative prediction but also exploits the structural information inside token sequences.
+
+Experimentally, we evaluate TRM within a personalized search engine, which relies on large-scale ranking models for online service. By applying TRM to state-of-the-art ranking models like RankMixer, our work exhibits significant performance improvements and resource conservation. The offline experiments are conducted on real user logs demonstrates a 0.65\% increase in AUC and a 33\% reduction in sparse storage. Furthermore, by enlarging the dense part of the ranking model, TRM consistently outperforms ID-based and other token-based models, delivering a growing relative QAUC gain from 0.54\% to 0.85\%.
+
+The main contribution of our work can be summarized as follows:
+\begin{itemize}[topsep=0.07em]
+
+\item We perform both theoretical and experimental analyses to prove the better scaling up performance of token-based models against ID-based models.
+
+\item We developed the token-based scaling up framework TRM, which effectively solves the problem of user-action mis-alignment, memorization sacrifice and structural information missing of traditional semantic tokens, leading to a better scaling up performance.
+
+\item  TRM has been successfully deployed on large-scale search engines, yielding 33\% sparse storage decrease, 0.26\% increase in user active days and 0.75\% decrease in change query ratio.
+\end{itemize}
+
+\section{Related Work}
+
+\paragraph{ID-based large ranking models and the embedding bottleneck.}
+Large-scale ranking models are traditionally dominated by sparse categorical features (e.g., item IDs) where each item is mapped to a learnable embedding in a large table, as exemplified by DLRM-style architectures \citep{naumov2019dlrm,rec-1,rec-2,rec-3,rec-4}. Under this paradigm new IDs continuously appear while old IDs retire. This feature drift problem complicates long-horizon knowledge accumulation and makes naive scaling by enlarging embedding tables inefficient \citep{coleman2023unified}.
+
+\paragraph{Semantic IDs and discrete item tokenization.}
+To mitigate the instability and poor generalization of raw IDs or hashed IDs, a growing line of work explores \emph{Semantic IDs}: compact discrete codes derived from content embeddings via vector quantization. \citet{singh2023semanticids} shows that semantic IDs can improve generalization for new and long-tail items in an industry-scale ranking model, and proposes sub-piece tokenization (including SentencePiece-style segmentation) to aid adaptation \citep{kudo2018sentencepiece}. In ads ranking, \citet{zhao2023embedding_survey} further analyze ID drifting and embedding instability, and \citet{zheng2025semid} propose prefix-based parameterizations to create semantically meaningful collisions. A recent comprehensive survey \citep{liu2024vq4rec} categorizes VQ methods for recommender systems into efficiency-oriented and quality-oriented approaches, highlighting their role in bridging content and collaborative signals. 
+
+\begin{figure*}
+    \centering
+    \includegraphics[width=1\linewidth]{figures/framework_cropped.pdf}
+    \caption{Framework of TRM.}
+    
+\end{figure*}
+
+
+\paragraph{Scaling laws for ranking models.}
+A broad empirical study surveys scaling phenomena across diverse large recommendation backbones \citep{guo2024insights} and \citet{yan2025unlocking} provides a practical path unlocking scaling properties in production settings. 
+Recent work has begun to uncover analogous behaviors in ranking and recommendation models \citep{scaling1,ardalani2022understanding}. \citet{fang2024scaling} provide evidence of power-law scaling in dense retrieval when evaluated with continuous surrogates, giving a basis for compute–data trade-off analyses. At industrial scale, generative recommenders further confirmed these trends, with OneRec reporting consistent performance gains under substantially increased training FLOPs \citep{deng2025onerec,zhou2025onerectr}, while OneSearch exploring unified end-to-end generation for e-commerce search with quantized item encodings \citep{chen2025onesearch}.
+
+
+
+
+
+
+\section{Methodology}
+
+We propose a unified tokenization-based ranking framework. The framework reformulates item modeling, representation discretization, and ranking optimization into a single pipeline. As shown in Figure [REF], first, we learn dense item representations by jointly leveraging multi-modal content signals and large-scale user interaction data. This produces collaborative-filtering–aware embeddings that capture both semantic attributes and behavioral relevance. Second, we construct structured semantic tokens from these embeddings using a hybrid tokenization strategy. The strategy combines coarse-grained hierarchical clustering with fine-grained subword composition, balancing generalization and memorization. Finally, we redesign the ranking model to operate entirely on semantic tokens rather than item IDs. The model integrates discriminative ranking objectives with auxiliary generative modeling to better capture hierarchical token dependencies and user–item interactions.
+
+
+
+
+
+
+
+\subsection{Collaborative-aware Multimodal Item Representation}
+To learn item representations that are both semantically grounded and behaviorally aligned, we adopt a two-stage representation alignment strategy. The first stage introduces in-domain knowledge of short videos, while the second stage aligns representations using collaborative signals from user behaviors. In the first stage, we perform in-domain multi-modal captioning to adapt the model to the short-video domain of the search system. Each item is represented by visual inputs together with textual metadata, such as titles, ASR (speech-to-text), OCR (image-to-text) and descriptions. These inputs are fed into a multi-modal large language model (MLLM), which is trained to generate video captions in an autoregressive manner. The training data is self-collected from real-world exposure logs and reflects the visual style, content diversity, and semantic density of short videos on the search system. This stage injects domain-specific knowledge into the model and improves its ability to jointly understand visual and textual information in the target scenario. We optimize the MLLM using a standard next-token prediction loss over caption tokens:
+[EQ]
+where $V$ denotes the visual inputs, $T={t_1,...,t_{|T|}}$ is the target caption, and $\theta$ represents the model parameters.
+
+In the second stage, we adapt the MLLM for representation learning by explicitly aligning embeddings with collaborative signals.
+For each input sample, we extract token representations from the last layer of the MLLM and apply mean pooling to obtain a single dense representation: 
+[EQ]
+
+where $\{\mathbf{z}_i\}_{i=1}^N$ are the token embeddings from the final layer. To align the multimodal representation with user behavior, we construct two types of training pairs from interaction logs. The first type consists of query–item pairs derived from positive user feedback. The second type consists of item–item pairs with high collaborative similarity by frequent co-clicks. We apply contrastive learning to both pair types to align representations of collaboratively similar queries and items, while separating unrelated samples. The contrastive alignment loss is defined as:
+
+[EQ]
+where $(a,b)$ denotes a positive query–item or item–item pair, $\mathcal{B}$ is the set of in-batch samples, $\tau$ is a temperature hyperparameter, and $\mathrm{sim}(.,.)$ denotes cosine similarity. The final training objective for collaborative-aware representation learning is:
+
+[EQ]
+where $\lambda$ controls the strength of collaborative alignment. Through this two-stage optimization, the learned representations encode in-domain multi-modal semantics and collaborative structure, forming a robust foundation for semantic tokenization.
+
+
+
+
+\subsection{Hybrid Tokenization with Generalization–Memorization Trade-off}
+
+
+
+
+Given the collaborative-aware item representation, we apply residual quantization using RQ-Kmeans[CITE] to obtain discrete semantic tokens. These tokens preserve shared semantic structure across items and exhibit strong generalization ability. Replacing item IDs with such semantic tokens improves ranking performance for newly emerging or low-exposure items, as shown in Figure [REF].
+
+However, our experimental results demonstrate that RQ-Kmeans-based/RQ-VAE–based tokenization, as used in a series of token-based models like OneRec[CITE], Tiger[CITE] and Semid[CITE], fail to outperform ID-based baselines in overall ranking performance. Figure [REF] illustrates that, as the exposure frequency of items increases, the model's performance continuously degrades and even brings negative impacts as items become older. This indicates semantic tokens fail to preserve item-specific knowledge in large-scale recommendation scenarios. As a result, token-based models typically requires an extra id-based reward system in practical deployment[CITE].
+
+We find the fundamental cause of this phenomenon is that residual quantization performs clustering in a corse-grained manner, resulting in semantic deficiency in item description.  In essence, residual quantization projects the item into a token sequence $s=[s_1, s_2, \cdots, s_n]$, where each token $s_i$ can represent a specific semantic meaning. But, the simple aggregation (sum / concatenation, {\it etc}) of semantic meanings cannot substitute the combination of such meanings. For example, if there exists two tokens pointing the semantic meaning of ``cake" and ``candle", the combination of them possibly implies the meaning of ``birthday", while neither of  the semantic tokens ``cake" or ``candle" can effectively learn such meaning. As a result, semantic tokens cannot learn combinative knowledge of a certain item, leading to poor memorization capabilities in recommendation.
+
+[FIGURE]
+
+To solve this problem, we propose to assign independent learnable tokens for learning semantic token's combinative knowledge. As shown in Figure [REF], we select high-frequency token combinations ({\it i.e.}, high-frequency k-grams) to generate new token IDs, which are used to preserve fine-grained and combinative item knowledge. Given the structured information in semantic token sequences, we consider each token as a sub-word describing the according item, and use the Byte Pair Encoding (BPE) [CITE] algorithm to find the most representative sub-word combinations. 
+
+We term original semantic tokens as ``generalization tokens" (gen-tokens) for coarse-grained knowledge sharing, and BPE-generated combinative tokens as ``memorization tokens" (mem-tokens) for fine-grained combinative knowledge preserving. In practical, gen-tokens and mem-tokens go through different embedding modules under a hashing system, and the generated embeddings serve as the model input. To further balance generalization and memorization, we implement a Wide$\&$Deep network[CITE] to generate hybrid tokens, where the deep-side input is gen-tokens and the wide-side input is mem-tokens. We also apply a random dropout on the deep side to avoid overfitting. As shown in Figure [REF], hybrid tokens improves the model's capability of fine-grained knowledge preservation, thus consistently demonstrating better performance against item IDs as the exposure frequency increases.
+
+\subsection{Joint Optimization of Discriminative and Generative Objectives}
+
+Prior works typically use semantic tokens in discriminative prediction[CITE] or generative retrieval[CITE].  While both paradigms exhibit good performance in large scale recommendation systems, they fail to fully exploit the potential of semantic tokens. In particular, the discriminative object treats each semantic token $s_i$ in the same manner, ignoring the structural information of the semantic token sequence. And the generative objective exhibits limitations in user goal integration and typically requires discriminative models to serve as auxiliary reward models[CITE]. 
+To fully exploit the potential of semantic tokens, we propose to directly and jointly optimize both the discriminative object and the generative object.  As shown in Figure [REF], in our search system, the input set of the personalized ranking model consists of three parts: (1) the query features $X_Q$; (2) the item features$X_I$, including multi-modal information and our hybrid tokens; (3) the user features $X_U$, including user interaction histories. For the discriminative objective, all of $X_q$, $X_I$ and $X_U$ are used to predict user's action (ctr, like, real-play, {\it etc}) to the actual item of $X_U$. We use the BCE loss to optimize the discriminative objective:
+[EQ]
+where $\theta_d$ is the learnable dense parameter for discriminative prediction, and $Y^i\in \{0, 1\}$ is the actual user action label to the item. For the generative objective, we use $X_q$ and $X_U$ as input to sequentially generate semantic tokens of the item that the user positively interacted. An next-token-prediction (NTP) loss is adopted to optimize the generative objective:
+[EQ]
+where $s_j^i$ is the $j$-th layer semantic token (gen-token) of the item, $L$ is the length of gen-tokens for the item, $\theta_g$ is the learnable dense parameter for generative optimization. In practice, $X_q$ and $X_U$ are projected into $N_q$ and $N_u$ tokens (termed as context tokens) respectively. During the causal prediction, we use a semi-causal mask, where context tokens are mutually visible, while subsequent start tokens and semantic tokens follow causal masking. 
+The final learning objective of TRM is as follows:
+[EQ]
+where $\lambda$ is a hyper-parameter to balance the discriminative and the generative loss.
+
+
+\begin{table*}[t]
+\begin{tabular}{ccccccccc}
+\toprule
+\multicolumn{2}{c}{\multirow{2}{*}{Model}}                      & \multicolumn{2}{c}{CTR}             & \multicolumn{2}{c}{Real Play}        & \multicolumn{3}{c}{Efficiency}                                                                                                                                             \\ \cmidrule{3-9}
+\multicolumn{2}{c}{}                                            & AUC              & QAUC             & AUC              & QAUC             & \begin{tabular}[c]{@{}c@{}}Dense\\ Param\end{tabular} & \begin{tabular}[c]{@{}c@{}}Sparse\\ Param\end{tabular} & \begin{tabular}[c]{@{}c@{}}FLOPs\\ (bs=4096)\end{tabular} \\ \midrule
+ID Baseline                  & DLRM-MLP                         & 0.8662           & 0.8826           & 0.8413           & 0.8604           & 7M                                                   & 7.52T                                                  & 0.13T                                                     \\ \midrule
+\multirow{5}{*}{ID-based}    & DCN-v2                           & +0.08\%          & +0.06\%          & +0.15\%          & +0.10\%          & 78M                                                   & 7.52T                                                  & 1.92T                                                     \\
+                             & DHEN                             & +0.29\%          & +0.23\%          & +0.33\%          & +0.31\%          & 242M                                                  & 7.52T                                                  & 8.42T                                                     \\
+                             & WuKong                           & +0.44\%          & +0.38\%          & +0.59\%          & +0.45\%          & 355M                                                  & 7.52T                                                  & 18.96T                                                    \\
+                             & Pure Transformer                 & +0.56\%          & +0.46\%          & +0.69\%          & +0.56\%          & 326M                                                  & 7.52T                                                  & 11.05T                                                    \\
+                             & RankMixer                        & +0.58\%          & +0.48\%          & +0.76\%          & +0.63\%          & 335M                                                  & 7.52T                                                  & 13.20T                                                    \\ \midrule
+\multirow{5}{*}{Token-based} & Tiger-token                      & +0.45\%          & +0.40\%          & +0.58\%          & +0.45\%          & 338M                                                  & 5.06T                                                  & 13.89T                                                    \\
+                             & OneRec-token                  & +0.53\%          & +0.45\%          & +0.64\%          & +0.54\%          & 342M                                                  & 5.06T                                                  & 13.98T                                                    \\
+                             & SEMID                       & +0.56\%          & +0.47\%          & +0.75\%          & +0.61\%          & 345M                                                  & 5.08T                                                  & 14.23T                                                    \\ \cmidrule{2-9}
+                             & \textbf{TRM-Pure Transformer} & \textbf{+0.61\%} & \textbf{+0.53\%} & \textbf{+0.81\%} & \textbf{+0.68\%} & \textbf{341M}                                         & \textbf{5.07T}                                         & \textbf{12.17T}
+                                                                        \\
+                               & \textbf{TRM-RankMixer}        & \textbf{+0.65\%} & \textbf{+0.54\%} & \textbf{+0.85\%} & \textbf{+0.70\%} & \textbf{352M}                                         & \textbf{5.07T}                                         & \textbf{14.66T}                                         \\
+
+\bottomrule       
+\end{tabular}
+\caption{Main results. Token-based methods except TRM-Pure Transformer are trained with the same RankMixer architecture. For Tiger-token, OneRec-token and Semid, we use their semantic tokens to replace the item id in RankMixer.}
+
+\end{table*}
+
+\section{Experiments}
+
+\subsection{Experiment Settings}
+\paragraph{Datasets and Environment.}
+The offline experiments are conducted using a large scale video search-ranking dataset. The dataset describes a search engine from three aspects. (1) Items. Each item contains frames, titles, audios and captions of the video, with personally identifiable information removed. (2) Queries and Users, which contains text content of user queries and the users' history interactions. (3) Interactions. For each query the dataset stores whether the user positively interacted to each item.
+\paragraph{Compared Models.} 
+We conduct a sufficient comparison between TRM and other SOTA ranking models. The item ID-based methods includes DCN[CITE], DHEN[CITE], WuKong[CITE] and RankMixer[CITE]. As for semantic token-based methods, we reproduce the semantic tokens proposed in TIGER[CITE], OneRec[CITE] and SemID[CITE]. All above sematic tokens are trained as the input of RankMixer, and we keep all hyper-parameters of the network consistent across all semantic token-based methods. We also train an MLP-based ranking baseline of 7M dense parameters for comparison.
+\paragraph{Detailed Setting of TRM.}
+In collaborative alignment we use 2 million item-item pairs as well as their multi-modal information. For hybrid tokenizatiojn, the gen-tokens are generated using RQ-Kmeans with 5 layers and 4096 embeddings for each codebook, resulting in a total of 20480 tokens. The BPE algorithm generates at most $2\times10^7$ tokens, which is negligible compared to the $1.3\times10^{10}$-sized item ID set used in item ID-based methods. For the joint training of TRM, both of $X_Q$ and $X_U$ are projected into 2 tokens ({\it i.e.}, $N_q=N_u=2$), and we use a 4-layer transformer network for causal prediction. We set $\lambda=0.1$ to balance the joint training.
+\paragraph{Evaluation Metrics.} 
+We use AUC (Area Under the Curve) and QAUC (Query-level AUC) to evaluate the performance of different models. Dense/Sparse parameter number and FLOPs are used to evaluate models' efficiency. We mainly focus CTR and Real-Play in offline experiments, where Real-Play equals to 1 if the item is watched by the user for over 10 seconds under its query. 
+
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=0.7\textwidth]{figures/scaling_curve.pdf}
+  \caption{\textbf{Scaling behavior under dense-parameter and compute budgets.}
+  We plot CTR qAUC gain over the 7M MLP baseline as a function of dense parameters (left) and training FLOPs per batch with bs=4096 (right).
+  TRM-RankMixer (token-based) consistently dominates other token/ID baselines across scales and the qAUC gain margin further enlarges with increasing model capacity, demonstrating a steeper and more favorable scaling trend.}
+  
+\end{figure*}
+
+[FIGURE]
+
+\subsection{Main Results}
+
+As shown in Table [REF], we compare the performance and efficiency between TRM and other SOTA methods, including both item ID-based and semantic token-based models.
+
+As we can see, our proposed TRM framework demonstrates superior performance and efficiency compared to both ID-based and token-based SOTA methods. The TRM-RankMixer variant achieves the highest performance gains across all metrics, with +0.65\% and +0.54\% improvements in CTR AUC and QAUC respectively, and +0.85\% and +0.70\% gains in Real Play AUC and QAUC. A key advantage of our approach lies in its parameter efficiency: TRM reduces sparse parameters from 7.52T in ID-based methods to 5.07T (a 32.6\% reduction) , while simultaneously improving model performance. This significant reduction in sparse parameters addresses the scalability challenges inherent in traditional ID-based recommendation models. 
+
+Apart from traditional feature-cross architectures, we also attempt to involve TRM in the training of pure transformer in ranking models (using only a transformer network without any feature-cross modules). We can see that TRM-Pure Transformer delivers competitive performance (+0.61\% CTR AUC, +0.81\% Real Play AUC) while maintaining the best computational efficiency with only 12.17T FLOPs, implying a potential all-token architecture in large scale recommendation systems.
+
+Furthermore, TRM models consistently outperform existing token-based methods (TIGER-token, OneRec-token, Meta-token) across all evaluation metrics, validating the effectiveness of our semantic token architecture. The results demonstrate that TRM successfully bridges the gap between performance and efficiency, offering a practical solution for removing inefficient IDs in ranking models.
+
+[TABLE]
+
+\subsection{Scaling Law Comparison}
+
+
+
+
+
+
+
+
+
+[TABLE]
+
+
+
+As shown in \cref{fig:scaling_qauc}, when increasing the dense network capacity, TRM-RankMixer brings consistent gains and maintains the leading curve on both Params and FLOPs axes. At the largest scale in our sweep, TRM-RankMixer reaches +0.75\% qAUC gain (1888M) while SEMID and ID-based RankMixer reach +0.68\% (1843M) and +0.60\% (1768M), respectively. The increasing margin suggests that TRM enables more effective utilization of additional dense capacity, consistent with improved semantic parameter sharing and reduced dependence on sparse ID memorization.
+
+In contrast, the ID-based strong baselines exhibit clear diminishing returns: WuKong saturates around +0.55\% even when scaled to $\sim$1.9B dense parameters, and does so with substantially higher compute (up to 124.64T FLOPs). DHEN shows even earlier saturation, reaching only +0.42\% at 1.17B dense parameters (49.75T FLOPs). This bottleneck behavior aligns with the intuition that purely ID-centric modeling is limited by long-tail sparsity and ID churn, where scaling dense towers alone cannot fully compensate for unstable/inefficient sparse memorization.
+
+Overall, \cref{fig:scaling_qauc} demonstrates that semantic-token rankers not only improve the absolute qAUC but also provide a better scaling law under both parameter and compute budgets, and TRM consistently achieves the best quality--efficiency frontier among all compared methods.
+
+
+
+
+
+
+
+
+
+\subsection{Ablation Studies}
+
+\textbf{Effect of different strategies of TRM.} We ablate different strategies proposed in our TRM framework, as shown in Table [REF]. We can see that all of the three strategies substantially improves the performance of TRM. Notably, Hybrid Tokenization contributes the most AUC gain, demonstrating the necessity of balancing the generalization and memorization capabilities of semantic tokens.
+
+\begin{table*}[t]
+\centering
+\begin{tabular}{cccccc}
+\toprule
+              & Search Active Days ($\uparrow$) & Change Query Ratio ($\downarrow$) & Strict CTR ($\uparrow$) & Like ($\uparrow$) & Comment ($\uparrow$) \\ \midrule
+Overall       & +0.26\%         & -0.75\%                  & +0.39\%          & +1.51\%    & +1.80\%       \\ \midrule
+Low-Active    & +0.27\%         & -0.81\%                  & +0.36\%          & +1.83\%    & +2.02\%       \\
+Middle-Active & +0.26\%         & -0.68\%                  & +0.31\%          & +1.21\%    & +1.69\%       \\
+High-Active   & +0.22\%         & -0.69\%                  & +0.40\%          & +1.20\%    & +1.59\%       \\ \bottomrule
+\end{tabular}
+\caption{Online performance of TRM in the search engine. All the reported values are significant (the p value in t-test is less than 0.05).}
+
+\end{table*}
+
+
+
+
+[TABLE]
+
+[TABLE]
+
+[TABLE]
+
+
+\textbf{Trade-off between generalization and memorization.} To study the impact of mem-tokens in TRM, we compare the AUC gain compared to gen-tokens when varying the number of mem-tokens. As shown in Figure [REF], the introduction of mem-tokens improves the performance of AUC prediction for items of all life time. We can draw two conclusions from the results. Firstly, increasing the number of mem-tokens can continuously bring about more AUC gain, but the extra gain approaches saturation when the token number increases to 20M. As we can see, increasing the mem-token number from 5M to 10M brings 0.04\% extra AUC gain for items older than 7 days; But it only improves 0.02\% extra AUC when increasing the number from 15M to 20M. Secondly, mem-tokens contribute to memorization more than generalization. The AUC increases 0.06\% for new items ({\it i.e.}, items produced within 1 day), but the improvement comes to 0.11\% for older items ({\it i.e.}, items produced more than 7 days). This phenomenon demonstrates our insight to improve the memorization capabilities using mem-tokens.
+
+Finally, we compare our BPE strategy in memorization enhancing with prefix-ngram which is used in SEMID[CITE]. As shown in Table [REF], BPE exhibits the best AUC/QAUC gain compared to 2-gram and prefix-ngram, thanks to the dynamic merging mechanism of BPE to capture combinative representations.
+
+
+
+
+\textbf{Effect of the NTP loss.} Since optimization of the generative objective requires extra dense parameters and FLOPs, we ablate the NTP loss to verify the source of the QAUC gain. As shown in Table [REF], the introduction of NTP loss brings only 1.7\% dense parameter increase and 0.5\% extra FLOPs/Batch compared to the full TRM model. But removing the NTP loss would severely decrease the QAUC from +0.05\% to +0.01\%, indicating that the improvement comes from the optimization of the generative objective rather than the parameter / FLOPs increase of the extra transformer architecture. The generative objective can exploit the structural information inside the semantic token sequences. Here we compare the NTP loss with Positional Encoding (PE) which can also manually inject sequential information to semantic tokens. As shown in Table [REF], the introduction of PE brings very limited performance improvement to semantic tokens. When combining NTP loss with PE, the improvement of PE even disappears. This result indicates NTP loss not only brings more sufficient structural information, but can also fully replace the role of PE.
+
+
+
+
+
+
+
+\subsection{Online Performance}
+
+To verify the performance of the TRM framework in real-world user-interaction scenarios, we conduct online experiments by applying the ranking model in the search engine. We report the following key performance indicators: \textit{Search Active Days} is the average number of days that each user actively uses the search engine. \textit{Change Query Ratio} is the ratio of query pages that users negatively interacted with. \textit{Strict CTR}, \textit{Like} and \textit{Comment} are the ratio of query pages that users click, like and comment in one of the shown items.
+
+The previous baseline is a 7M DLRM ranking model. Here we replace the baseline model with TRM-Rankmixer-352M, which yields a QAUC gain of 0.54\% in CTR. From Table [REF] we can see that TRM exhibits substantial improvement on all the indicators. Notably, TRM increases the performance across users of all activity levels, demonstrating TRM's universality in improving users' online experience. We further conduct a user review about the query pages by asking 15 real users to perform side-by-side comparison on 462 randomly sampled query pages under a double-blind setting. As shown in Table [REF], TRM increases item quality, query-item relevance and content satisfactory substantially in real user feedbacks.
+
+
+
+
+
+
+\section{Conclusion}
+
+In this paper, we present TRM, a semantic token-based framework for scaling up large-scale ranking models. We perform sufficient theoretical and experimental analyses to prove that semantic token-based models demonstrates better scaling capabilities than item ID-based models. By integrating the proposed strategies ({\it i.e.}, collaborative alignment, hybrid tokenization and joint optimization), we achieves substantially better performance in the ranking system. Our online test in the large-scale search system further validates the effectiveness of TRM and reveals the promising direction of scaling up ranking models with semantic tokens.
+
+
+\newpage
+
+\bibliography{example_paper}
+\bibliographystyle{icml2026}
+
+\newpage
+\appendix
+\onecolumn
+\section{Appendix}
+
+\subsection{Token-based and ID-based scaling-law analysis}
+
+
+\subsubsection{Empirical scaling law for the tower}
+
+
+When scaling the \emph{neural tower} (holding representation and training protocol fixed), we observe the standard power-law behavior:
+[EQ]
+where $N$ is the number of tower parameters, $\mathcal{L}_{\infty}$ is the irreducible error level (floor), and $\beta>0$ is the scaling exponent \citep{hestness2017deep,kaplan2020scaling,bahri2024explaining}.
+Empirically, both ID-based and token-based models exhibit an approximately linear trend on a log--log plot over a nontrivial range, and tokenization yields a larger fitted exponent (steeper slope) for tower scaling (Sec.~[REF]).
+
+\subsubsection{A smoothness--dimension interpretation of $\beta$}
+
+
+We interpret $\beta$ through the smoothness of the Bayes-optimal CTR function over a semantic latent space.
+Let $Z\in\mathcal{Z}\subset\mathbb{R}^{d_*}$ be a continuous semantic representation of an item, and $(U,Q)$ be user/query context.
+Define the Bayes-optimal CTR probability and its logit:
+\[
+p^*(u,q,z)=\mathbb{P}(Y=1\mid U=u,Q=q,Z=z),
+\qquad
+\eta^*(u,q,z)=\log\frac{p^*(u,q,z)}{1-p^*(u,q,z)}.
+\]
+Assume that for fixed $(u,q)$, $\eta^*$ is $s$-H\"older in $z$:
+[EQ]
+Let $d_{\mathrm{eff}}$ denote an \emph{effective dimension} of the semantic domain. %(e.g., intrinsic/manifold dimension or a data-dependent proxy such as effective rank / spectral degrees of freedom measured in Sec.~[REF]).
+
+Approximation theory for deep networks over H\"older/Sobolev classes indicates that the achievable approximation error decay is controlled by the interplay between smoothness $s$ and dimension $d_{\mathrm{eff}}$ (up to log factors) \citep{yarotsky2017error,lu2021deep,siegel2023optimal}.
+A convenient scaling-compatible parameterization is:
+[EQ]
+so larger smoothness $s$ and smaller effective dimension $d_{\mathrm{eff}}$ lead to a larger exponent $\beta$.
+
+\subsubsection{Decomposing the observed scaling: $(s,d_{\mathrm{eff}})$ vs.\ quantization}
+
+
+For token-based models, the tower operates on a quantized semantic variable $\tilde Z=Q(Z)$ (RQ-VAE / RQ-kmeans). Over the tower-scaling regime, we can write:
+[EQ]
+Thus, $\beta$ is governed by the smoothness--dimension pair $(s,d_{\mathrm{eff}})$ induced by the representation, while quantization contributes an $N$-independent shift to the floor.
+
+\subsubsection{RQ-VAE quantization mainly shifts the floor}
+
+
+\paragraph{CTR loss is Lipschitz in logit space.}
+Write binary cross-entropy in logit form:
+\[
+\ell(y,\eta)=\log(1+e^{\eta})-y\eta,\quad y\in\{0,1\}.
+\]
+Since $\frac{\partial \ell}{\partial \eta}=\sigma(\eta)-y\in[-1,1]$, we have:
+[EQ]
+
+\paragraph{Quantization distortion and floor shift.}
+Let $\tilde Z=Q(Z)$, and define the $s$-moment distortion
+[EQ]
+Define Bayes risks with full semantic information and with quantized information:
+\begin{align}
+
+\mathcal{L}_\infty &:= \inf_{h}\; \mathbb{E}\big[\ell\big(Y, h(U,Q,Z)\big)\big],\\
+\mathcal{L}_{\infty,\mathrm{tok}} &:= \inf_{h}\; \mathbb{E}\big[\ell\big(Y, h(U,Q,\tilde Z)\big)\big].
+\end{align}
+Let $\Delta_{\mathrm{quant{RQ\_VAE}}}:=\mathcal{L}_{\infty,\mathrm{tok}}-\mathcal{L}_{\infty}\ge 0$.
+
+\begin{proposition}[Quantization floor shift under CTR loss]
+
+Assume the Bayes logit satisfies the H\"older condition~\eqref{eq:holder-logit-sd}. Then
+[EQ]
+\end{proposition}
+
+\paragraph{Quantization does not change the tower exponent within the scaling regime.}
+Let $\mathcal{L}_{\mathrm{tok}}(N)$ be the best population loss achievable by an $N$-parameter tower operating on $(U,Q,\tilde Z)$:
+\[
+\mathcal{L}_{\mathrm{tok}}(N)
+:=
+\inf_{\theta:\#\theta\le N}\;
+\mathbb{E}\big[\ell(Y,g_\theta(U,Q,\tilde Z))\big].
+\]
+Then
+[EQ]
+Therefore, if $\mathcal{L}_{\mathrm{tok}}(N)-\mathcal{L}_{\infty,\mathrm{tok}}\approx A N^{-\beta_{\mathrm{tok}}}$ over a range of $N$, then $\Delta_{\mathrm{quant{RQ\_VAE}}}$ changes only the asymptotic floor and not $\beta_{\mathrm{tok}}$ in that regime.
+
+\paragraph{When can quantization be ignored?}
+Quantization is negligible whenever $\Delta_{\mathrm{quant{RQ\_VAE}}}$ is dominated by the tower term $A N^{-\beta_{\mathrm{tok}}}$ throughout the practical scaling range.
+A simple sufficient condition is small $\delta_s$; for $0<s\le 2$, letting $D:=\mathbb{E}\|Z-\tilde Z\|^2$,
+[EQ]
+
+\subsubsection{Why tokenization can increase the observed exponent}
+
+
+Token-based LRMs promote \emph{semantic parameter sharing}: many items reuse a compact set of multi-modal tokens trained from abundant head traffic, improving transfer to tail/new items.
+Empirically, token representations concentrate on a lower-complexity subspace and exhibit faster spectral decay , consistent with a smaller effective dimension $d_{\mathrm{eff,tok}}$ and more stable semantics (effectively larger $s_{\mathrm{tok}}$ in the representation-induced metric).
+In contrast, open-set ID embeddings under long-tail frequencies and churn introduce representation noise and weak sharing, which inflate effective complexity (larger $d_{\mathrm{eff,id}}$) and reduce the effective smoothness seen by the tower.
+Combined with~\eqref{eq:beta-sd-form}, this yields
+\[
+\beta_{\mathrm{tok}} \approx \beta(s_{\mathrm{tok}},d_{\mathrm{eff,tok}})
+\;>\;
+\beta_{\mathrm{id}} \approx \beta(s_{\mathrm{id}},d_{\mathrm{eff,id}}),
+\]
+which explains why the token-based tower scaling curve is empirically steeper than the ID-based baseline (Sec.~[REF]).
+
+
+\end{document}
+

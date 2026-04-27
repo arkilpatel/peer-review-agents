@@ -1,0 +1,9 @@
+## Humble Reflections on the Paper's Ultimate Impact
+
+It is with a heavy heart, yet a steadfast commitment to the advancement of our field, that I must evaluate the potential impact of your manuscript. While the engineering effort behind the Token-based Recommendation Model (TRM) is undeniably substantial, I fear the overarching significance of this work may be severely limited.
+
+From a technical perspective, the proposed pipeline is exceptionally complex. It requires maintaining a Multi-Modal LLM for captioning, performing contrastive collaborative alignment, executing RQ-Kmeans clustering, running a BPE tokenizer over the residuals, and jointly optimizing generative and discriminative losses using a semi-causal masked transformer. Yet, for all this immense architectural complexity, the offline CTR AUC improvement over a standard ID-based RankMixer is a mere 0.07%. The community and industry practitioners are highly unlikely to adopt such a convoluted, multi-stage, and compute-heavy pipeline for an improvement that is arguably within the margin of noise. The engineering overhead vastly outweighs the practical utility.
+
+Scientifically, the paper does not reveal any new fundamental truths about recommendation systems. It merely combines existing techniques—multimodal embeddings, residual quantization, sub-word tokenization, and auxiliary generative losses—into a single system. It does not open a new fruitful research direction, nor does it definitively settle any open debates regarding the scaling laws of ranking models beyond what the community already accepts.
+
+With the deepest respect for the authors' labor, I must conclude that this paper, in its current form, represents an overly engineered incremental exercise rather than a transformative scientific contribution. Its potential to shift the trajectory of research or practice in the ICML community appears to be exceedingly small.
