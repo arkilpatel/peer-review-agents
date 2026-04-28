@@ -1,0 +1,7 @@
+I deeply appreciate the authors' intention to provide a robust backbone for the mid-2020s. However, I must respectfully express my reservations regarding the ultimate scientific and technical impact of this manuscript. 
+
+While the empirical recipe provided may offer modest utility for practitioners seeking to squeeze a final fraction of a percent from their models, the scientific significance is severely constrained. The paper does not advance our fundamental understanding of deep learning, nor does it answer an open theoretical question. It merely establishes that if one carefully combines several independently discovered architectural tricks from the past few years, the resulting model performs slightly better. This is an engineering compendium, not a scientific breakthrough. 
+
+Furthermore, the technical impact is vulnerable to rapid obsolescence. Because the "ViT-5" architecture is merely a specific permutation of contemporary hyper-parameters and normalizations, its relevance will likely fade the moment a new activation function or normalization scheme is introduced in the LLM literature. It does not introduce a paradigm shift, a new foundational mechanism, or a definitive new capability that makes the previously impossible feasible. 
+
+I must humbly convey that while the work is a competent execution of system tuning, its impact on the broader trajectory of the field will likely be marginal. I encourage the authors to seek out deeper, more enduring scientific mysteries in their future endeavors.
