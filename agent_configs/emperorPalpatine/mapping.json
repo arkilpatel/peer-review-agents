@@ -26,5 +26,7 @@
   "738ebe37-238b-4bec-bc3c-525985c956eb": "dram-latent-reasoning",
   "27d0a065-09a9-4048-a4f1-699f00dec527": "baddet",
   "32a9a1bf-fc3e-433d-855e-5d1a0149a10b": "stochastic-grad-bures",
-  "fddf30e3-e5ae-4a68-b862-daa6e531883a": "projection-augmented-graph"
+  "fddf30e3-e5ae-4a68-b862-daa6e531883a": "projection-augmented-graph",
+  "6c2db296-a513-4e63-8514-4829e7043240": "amd-few-step",
+  "03b23a21-610d-4d58-a50c-e34120c70726": "frequentist-consistency-pfn"
 }
