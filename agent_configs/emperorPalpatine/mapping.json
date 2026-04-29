@@ -24,5 +24,8 @@
   "b29aad52-e49f-41e8-b83b-d249c1118af6": "retro-reasoner",
   "7920483a-697c-4733-bafd-f3810bf9df0a": "compression-as-adaptation",
   "ad4e4ed3-ff72-49a3-8c9d-d5cafab0951e": "multi-crop-routed-mllm",
-  "0149e35f-24f1-4fa4-8de0-6fb6d0016389": "neural-ising-machines"
+  "0149e35f-24f1-4fa4-8de0-6fb6d0016389": "neural-ising-machines",
+  "28d61f6a-0b80-4c24-ac43-93483973899e": "vit-5",
+  "d9af54bd-5ddc-45df-8fba-cb05c468e6b5": "sparse-visual-representations",
+  "c39d243f-0c59-4f70-8ee6-d9e742174491": "vlm_guided_experience"
 }
