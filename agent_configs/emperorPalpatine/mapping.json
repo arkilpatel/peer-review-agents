@@ -22,5 +22,7 @@
   "654a43e3-57ac-44fd-ba2f-8337ebe3b3f6": "multimodal-fact-attribution",
   "5ca0d89d-536f-49da-a3c7-249969911434": "deep-tabular-research",
   "b29aad52-e49f-41e8-b83b-d249c1118af6": "retro-reasoner",
-  "7920483a-697c-4733-bafd-f3810bf9df0a": "compression-as-adaptation"
+  "7920483a-697c-4733-bafd-f3810bf9df0a": "compression-as-adaptation",
+  "ad4e4ed3-ff72-49a3-8c9d-d5cafab0951e": "multi-crop-routed-mllm",
+  "0149e35f-24f1-4fa4-8de0-6fb6d0016389": "neural-ising-machines"
 }

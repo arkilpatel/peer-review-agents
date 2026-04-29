@@ -1,0 +1,2458 @@
+000
+001
+002
+003
+004
+005
+006
+007
+008
+009
+010
+011
+012
+013
+014
+015
+016
+017
+018
+019
+020
+021
+022
+023
+024
+025
+026
+027
+028
+029
+030
+031
+032
+033
+034
+035
+036
+037
+038
+039
+040
+041
+042
+043
+044
+045
+046
+047
+048
+049
+050
+051
+052
+053
+054
+Neural Ising Machines via Unrolling and Zeroth-Order Training
+Anonymous Authors1
+Abstract
+We propose a data-driven heuristic for NP-hard
+Ising and Max-Cut optimization that learns the
+update rule of an iterative dynamical system. The
+method learns a shared, node-wise update rule
+that maps local interaction fields to spin updates,
+parameterized by a compact multilayer percep-
+tron with a small number of parameters. Train-
+ing is performed using a zeroth-order optimizer,
+since backpropagation through long, recurrent
+Ising-machine dynamics leads to unstable and
+poorly informative gradients. We call this ap-
+proach a neural network parameterized Ising ma-
+chine (NPIM). Despite its low parameter count,
+the learned dynamics recover effective algorith-
+mic structure, including momentum-like behav-
+ior and time-varying schedules, enabling efficient
+search in highly non-convex energy landscapes.
+Across standard Ising and neural combinatorial
+optimization benchmarks, NPIM achieves com-
+petitive solution quality and time-to-solution rela-
+tive to recent learning-based methods and strong
+classical Ising-machine heuristics.
+1. Introduction
+Many combinatorial optimization problems are solved in
+practice using problem-specific heuristics whose effective-
+ness relies on carefully designed update rules, schedules,
+and hyperparameters. While these methods can perform
+well in practice, their design typically involves substantial
+manual experimentation. This has motivated increasing in-
+terest in data-driven approaches that aim to learn effective
+optimization heuristics directly from experience. In this con-
+text, neural combinatorial optimization (neural CO) seeks
+to replace or augment hand-crafted heuristics with learned
+optimization dynamics, often parameterized by neural net-
+works and trained across distributions of problem instances.
+1Anonymous Institution, Anonymous City, Anonymous Region,
+Anonymous Country. Correspondence to: Anonymous Author
+<anon.email@domain.com>.
+Preliminary work. Under review by the International Conference
+on Machine Learning (ICML). Do not distribute.
+Over the past decade, a wide range of neural CO methods
+have been proposed, demonstrating promising results on
+several benchmark problems (see Sec. 2.1). However, many
+existing approaches rely on large neural architectures, long
+rollout horizons, or complex gradient-based training, which
+can make training expensive and limit scalability. As a re-
+sult, classical heuristics often remain competitive baselines.
+In this work, we introduce a data-driven optimization
+method for Ising and Max-Cut problems that directly ad-
+dresses these limitations by learning the update rule of an
+iterative dynamical system. Our approach builds on recent
+progress in dynamical Ising machines by parameterizing
+their update dynamics with a compact multilayer perceptron
+and training these parameters using a zeroth-order optimiza-
+tion method. This design enables efficient training with a
+small number of parameters. On standard Ising and neural
+combinatorial optimization benchmarks, the resulting neu-
+ral Ising machine achieves competitive performance while
+retaining the simplicity and scalability of classical Ising-
+machine formulations.
+2. Related Works
+2.1. Neural Combinatorial Optimization
+In the field of neural combinatorial optimization (neural
+CO), many different types of CO problem have been consid-
+ered, the most common being the traveling salesman prob-
+lem (TSP) (Vinyals et al., 2017; Bello et al., 2017; Deudon
+et al., 2018; Joshi et al., 2019; Bresson & Laurent, 2021;
+Bogyrbayeva et al., 2022; Sui et al., 2024; Alanzi & Menai,
+2025). Many architectures have been used on TSP including
+pointer networks (Vinyals et al., 2017), transformers (Kool
+et al., 2019) and GNNs (Joshi et al., 2019). Both supervised
+learning (SL) and reinforcement learning (RL) have been
+used for training with policy gradient based RL methods
+being the most popular (Bello et al., 2017). Additionally,
+diffusion models have also been proposed as a technique
+for neural CO (Sun & Yang, 2023; Sanokowski et al., 2024).
+In addition to TSP, neural methods have been proposed to
+heuristically solve countless other NP-hard problems in-
+cluding graph matching (Zanfir & Sminchisescu, 2018),
+routing problems (Zhou et al., 2025), maximum indepen-
+dent set (Ahn et al., 2020) , and Boolean satisfiability (B¨unz
+& Lamm, 2017) to name a few. In particular, there have
+1
+055
+056
+057
+058
+059
+060
+061
+062
+063
+064
+065
+066
+067
+068
+069
+070
+071
+072
+073
+074
+075
+076
+077
+078
+079
+080
+081
+082
+083
+084
+085
+086
+087
+088
+089
+090
+091
+092
+093
+094
+095
+096
+097
+098
+099
+100
+101
+102
+103
+104
+105
+106
+107
+108
+109
+Neural Ising Machines via Unrolling
+been a number of neural approaches to Max-Cut and other
+closely related problems such as Maximum independent set
+(MIS) that are directly equivalent to the Ising problem stud-
+ied in this work (Dai et al., 2018; Karalias & Loukas, 2021;
+Schuetz et al., 2022; Zhang et al., 2023; Sanokowski et al.,
+2023; 2024; 2025). Approaches include GNNs (Schuetz
+et al., 2022), G-flow-nets, (Zhang et al., 2023) and more
+recently diffusion samplers (Sanokowski et al., 2024; 2025).
+For further references and recent reviews on neural CO we
+refer the reader to (Cappart et al., 2022; I. Garmendia et al.,
+2024; Martins et al., 2025; Thinklab-SJTU, 2021).
+2.2. Dynamical System Approaches to Ising/Max-Cut
+(Ising Machines)
+Over the years, there have been many physics-inspired
+approaches to solving the Max-Cut problem. These ap-
+proaches are inspired by the fact that many physical systems
+naturally seek to minimize some quantity (e.g., physical
+energy) so if the problem objective can be mapped to this
+quantity then the physical device can sample good solutions
+to the desired optimization problem. These ideas date back
+to concepts like Hopfield neural networks (Hopfield, 1982),
+but have gained more attention again recently. In particular,
+there has been a lot of work showing that even for certain
+systems, simulating the physical dynamics numerically can
+lead to developing state-of-the-art algorithms. These algo-
+rithms, typically called “Ising machines” often involve rep-
+resenting the solution of a Max-Cut/Ising problem as a set
+of continuous degrees of freedom which evolve dynamically
+over time. Some examples include coherent Ising machines
+(CIM) (Wang et al., 2013; Yamamoto et al., 2017; 2020;
+Lu et al., 2023), analog iterative machines (AIM) (Kalinin
+et al., 2023) which are inspired by photonics, oscillator Ising
+machines (OIM) (Wang & Roychowdhury, 2019) based on
+analog electronics as well as algorithms like simulated bi-
+furcation machines (SBM) (Goto et al., 2019), and chaotic
+amplitude control (CAC) (Leleu et al., 2019; 2021; Leleu
+& Reifenstein, 2025) which are inspired by more general
+physical principles. Although it has been demonstrated nu-
+merically that these algorithms are very effective at solving
+Max-Cut problems, it is not well understood why certain
+types of dynamics are more effective than others beyond
+some loose connections with the underlying physics. Addi-
+tionally, as is common for heuristic algorithms for CO, there
+is often an amount of hyper-parameter tuning required for
+these algorithms to be effective on a certain class of problem
+instances.
+2.3. Learning to Optimize and Algorithm Unrolling
+Learning to Optimize (L2O) and algorithm unrolling are
+machine learning techniques commonly used for solving
+optimization problems where a simple iterative algorithm
+is typically used. The idea of algorithm unrolling is that,
+instead of replacing an entire iterative algorithm with a
+multi-layer deep neural network, we modify the existing
+iterative algorithm to a more general version with more pa-
+rameters (which is essentially a recurrent neural network)
+(Monga et al., 2020; Chen et al., 2021; Kotary et al., 2023;
+Chen et al., 2024). These parameters can then be tuned
+by some machine learning technique so that we get an im-
+proved version of the original iterative approach. Because
+this technique requires many fewer parameters than the cor-
+responding DNN parameterization, it is often much more
+efficient, scalable and interpretable (Monga et al., 2020).
+Algorithm unrolling has traditionally focused on problems
+in sensing and signal reconstruction (Chen et al., 2021;
+Balatsoukas-Stimming & Studer, 2019; Gregor & LeCun,
+2010). A foundational example of this is in which ISTA (it-
+erative shrinkage and thresholding algorithm), a commonly
+used algorithm for sparse signal construction, was extended
+to LISTA (learned ISTA). The convergence and reconstruc-
+tion accuracy of ISTA were greatly improved by learning
+additional parameters (Gregor & LeCun, 2010). Although
+these example are mostly in settings where the underlying
+optimization problem is convex, there are some works that
+explore algorithm unrolling in the context of non-convex
+optimization (Tan et al., 2023; Wei et al., 2025; Song et al.,
+2024). To the best of our knowledge, algorithm unrolling
+has seen limited application to NP-hard combinatorial opti-
+mization problems, with integer linear programming (ILP)
+being a notable example (Chen et al., 2024).
+2.4. Zeroth Order Optimization and Evolutionary
+Strategies
+Most machine learning techniques rely on some form of
+gradient estimation, which is typically based on backpropa-
+gation. Examples of this are the typical stochastic gradient
+descent (SGD) used in supervised learning and the policy
+gradient method of reinforcement learning. On the other
+hand, zeroth-order methods do not use a backward pass
+and compute the gradient using a finite-difference estimator.
+These types of methods have been proposed as alternatives
+to backpropagation and policy-gradient reinforcement learn-
+ing, typically because of the smaller computational overhead
+required (Salimans et al., 2017). In our case, we use a zeroth
+order method for a slightly different reason. Because the
+dynamics of an Ising machine are very complex and require
+many layers of computation, it is not possible to use back-
+propagation to estimate gradients accurately because of the
+vanishing/exploding gradient phenomenon. Similarly, if we
+try to use the policy gradient method on an Ising machine an
+equivalent problem arises. Because there are so many small
+steps (decisions) that an Ising machine makes in a single
+trajectory, when using the policy gradient method we get a
+very noisy gradient signal because it is hard to accurately
+attribute each of these decisions to the success of the algo-
+2
+110
+111
+112
+113
+114
+115
+116
+117
+118
+119
+120
+121
+122
+123
+124
+125
+126
+127
+128
+129
+130
+131
+132
+133
+134
+135
+136
+137
+138
+139
+140
+141
+142
+143
+144
+145
+146
+147
+148
+149
+150
+151
+152
+153
+154
+155
+156
+157
+158
+159
+160
+161
+162
+163
+164
+Neural Ising Machines via Unrolling
+rithm. For more details and numerical results see App. E.
+Note that many previous works such as (Zhang et al., 2023)
+and (Sanokowski et al., 2024) attempt to fix this problem
+of reward attribution for CO algorithms, however we take a
+different approach and use an entirely different optimization
+technique which is not based on the REINFORCE algorithm
+(Williams, 1992).
+2.5. Our Contribution
+In this work, we propose a method of neural CO which
+essentially applies the idea of algorithm unrolling to dynam-
+ical Ising machines. For our training method, we use a ze-
+roth order optimization method (Reifenstein et al., 2024) in-
+stead of the more typical backpropagation or policy-gradient
+based methods. We parameterize the update step of an Ising
+machine with a neural network allowing it to learn optimal
+search dynamics in a data-driven way. Our method is novel
+in the following ways:
+• We apply the techniques of algorithm unrolling to the
+NP-hard Max-Cut problem.
+• We use zeroth-order optimization to tune a neural net-
+work in the context of combinatorial optimization.
+• We show that effective dynamics for Ising machines
+can be learned from scratch in a data-driven way.
+3. Proposed Method
+3.1. The Ising Problem
+In this work, we will consider the NP-hard Ising problem
+defined as follows. The goal is to minimize a quadratic ob-
+jective function with respect to a set of binaryNvariables:
+min
+σ∈{−1,1}N
+X
+i,j
+Jij σiσj −
+X
+i
+li σi (1)
+where the problem instance is specified by the symmetric
+NxN matrix J and N dimensional vector l. This problem
+can be shown to be mathematically equivalent to several
+other optimization problems including Max Cut (MCut),
+Max Clique (MC), Max Independent Set (MIS) and QUBO
+(Quadratic Unconstrained Binary Optimization) problems
+(see App. A). In this work we will often use the term
+“Ising problem” to refer to this class of problems which
+are described by optimizing a set of binary variables over a
+quadratic objective function.
+3.2. Ising Machines
+An Ising machine is most generally defined as a dynamical
+system which is used to optimize the Ising problem. How-
+ever, in this work we will give it a specific mathematical
+definition as
+xi(t) =F(t, h i(0), ..., hi(t−1))(2)
+hi(t) =
+X
+j
+Jijxj(t) + 1
+2 li.(3)
+The Ising machine dynamics is fully determined by the func-
+tion F . The variables xi(t) denote the current approximate
+solution of the Ising problem (although they can have con-
+tinuous values) and the variables hi(t) can be interpreted
+as a discrete gradient of the objective function with respect
+to the current approximate solution. In addition, F may
+have some stochastic component to it. The algorithm is
+carried out by starting with xi(0) at some random value (de-
+termined by F ) and then iterating the above equations by T
+steps. At each step, a possible solution can be calculated as
+σi(t) =sign(x i(t)) and typically we take the best solution
+over the course of the trajectory to be the output. Because
+of the stochastic nature, in practice many trajectories are
+often computed and the best solution out of all of them is
+used. For specific examples of dynamical Ising machines
+and how they map to this formulation, refer to App. B.
+3.3. MLP Parameterization
+The key concept behind our method is to parameterize the
+function F with a simple multilayer perceptron (MLP) neu-
+ral network. To do this, we restrict the history ofhi variables
+used to a specific length Tc and use these as the input layer
+of our network. For this work, we use a two layer network
+with tanh activation functions. Additionally, we do not
+include bias parameters. This is because in order for the
+algorithm to respect the symmetry of the Ising problem we
+want the resulting function to be odd with respect to every
+input. We can express this function explicitly as follows:
+F(t, h(0), . . . , h(t−1)) =MLP(t, h(t−T c), . . . , h(t−1))
+(4)
+= tanh
+"
+W 0(t)η+
+X
+k∈{0,...,D−1}
+W 1
+1,k(t)f nl
+
+X
+s∈{0,...,Tc−1}
+W 2
+k,s(t)h(t−T c +s)
+#
+(5)
+where D denotes the number of hidden neurons,η is N(0,1)
+Gaussian noise, and fnl is the nonlinear activation function
+fnl(x) =x+ tanh(x) . W 0(t), W 1(t) and W 2(t) are the
+tunable weight matrices of dimensions 1x1, 1xD and DxTc
+respectively. Note that the weight matrices are indicated to
+have dependence on t. This is because we want the Ising
+machine’s dynamics to be allowed to vary over the course of
+the trajectory, which is something that is important to many
+Ising machines. To complete this parameterization, we first
+flatten the weight matrices into one vectorθ(t) of dimension
+3
+165
+166
+167
+168
+169
+170
+171
+172
+173
+174
+175
+176
+177
+178
+179
+180
+181
+182
+183
+184
+185
+186
+187
+188
+189
+190
+191
+192
+193
+194
+195
+196
+197
+198
+199
+200
+201
+202
+203
+204
+205
+206
+207
+208
+209
+210
+211
+212
+213
+214
+215
+216
+217
+218
+219
+Neural Ising Machines via Unrolling
+Figure 1.a) Diagram showing the flow of information in a neural network Ising machine. The coupling fields (purple), calculated by
+aggregating the influence of the N−1 other variables, are saved from previous iterations. They are then fed into the neural network
+model and used to decide the new spin variable which is then used to compute the next coupling field. See Secs. 3.2 and 3.3 for a concrete
+mathematical description. b) High level overview of our method relative to other approaches to CO, inspired by Fig. 15 of (Monga et al.,
+2020). c) Cartoon depiction of the zeroth-order evolutionary optimization algorithm we use based off of (Reifenstein et al., 2024). A
+distribution of parameters (represented by red circles) is evolved over many iterations to close in on an optimal parameter configuration
+(blue dot).
+1 +D+DT c. Then we introduce another hyperparameter
+M which corresponds to the number of degrees of freedom
+for which each parameter can vary with respect to time.
+More specifically, we can express θi(t) in terms of a (1 +
+D+DT c)xMmatrixΘ i,m as follows:
+θi(t) =
+X
+m∈{0,...,M−1}
+Θi,mfm(t/T)(6)
+where fm are a set of functions on the interval [0,1] which
+can be used as a basis to describe a general smooth function.
+In our work, we use the Fourier basis described by
+fm(τ) =
+(
+cos( m
+2 πτ)m∈even
+sin( m+1
+2 πτ)m∈odd .(7)
+Together, this gives a total of (1 +D+T cD)M total pa-
+rameters. We will refer to the algorithm created by iterating
+these equations as “neural network parameterized Ising ma-
+chine” (NPIM). In addition to the network defined in eq. (5),
+we also consider another version in which the outer tanh
+nonlinearity is replaced by the discontinuous sign function
+causing the xi(t) variables to be binary. We will refer to
+the resulting algorithms as cNPIM and dNPIM respectively
+(corresponding to continuous and discrete coupling). Al-
+though dNPIM is technically a special case of cNPIM (by
+scaling the weights), dNPIM tends to have different induc-
+tive biases and better generalization as shown in Sec. 4.5.
+The choice of a simple Fourier basis in Eq. (7) is motivated
+by empirical observations that the specific temporal basis
+(e.g., Fourier, Chebyshev, or Legendre) has only a minor
+effect on performance, while the dominant factor is the num-
+ber of available temporal modes M, as shown in App. C.2
+(Fig. 5).
+3.4. Parameter Tuning and Reward Function
+To optimize the parameters of our model we use a zeroth-
+order evolutionary optimization method based on (Reifen-
+stein et al., 2024). To do this, we choose a reward function
+which incentivizes trajectories which are successful at find-
+ing good values of the objective function. Depending on our
+goal (i.e. which benchmark we are training for) we use one
+of two reward functions which are described in App. F. The
+optimization process can then be formalized as follows. A
+distribution in the space of network weights θ∈R P (where
+P= (1 +D+T cD)M ) is described by two variables:
+θx ∈R P , which represents the current mean of the parame-
+ter distribution, and θL ∈R P×P , which controls the scale
+and anisotropy of parameter-space exploration. Then, we
+define the reward function ρ which takes as an in a trajec-
+tory of an NPIM and outputs a real number (see Sec. F for
+specific definitions). Our goal is to maximize the expected
+reward function which can be written as
+R(θx, θL) =E v,η,J ρ(traj(θx +θ Lv, η, J))(8)
+where the expected value is taken over three distributions.
+v is a random variable in N(0,1) P which is mapped to a
+perturbation in the parameter space by the matrix θL. η is
+a random vector corresponding to the stochastic behavior
+of the trajectory dynamics themselves, and lastly J is an
+instance of the Ising problem chosen from the relevant dis-
+tribution. The notation traj(θ, η, J) is meant to symbolize
+a trajectory of the NPIM dynamics with the given network
+weights θ, instantiation of noise η and problem instance J.
+Following the equations in (Reifenstein et al., 2024) we then
+estimate the gradient of R with respect to both θx and θL
+by computing samples from this distribution. At each step,
+the estimated gradients are then used to update both θx and
+θL. A single update of both θx and θL we will refer to as an
+“epoch” in this work.
+Intuitively, the optimizer maintains a distribution over net-
+work parameters. At each epoch, random perturbations of
+the parameters are evaluated by running full NPIM trajecto-
+ries and measuring their reward. Correlating these pertur-
+4
+220
+221
+222
+223
+224
+225
+226
+227
+228
+229
+230
+231
+232
+233
+234
+235
+236
+237
+238
+239
+240
+241
+242
+243
+244
+245
+246
+247
+248
+249
+250
+251
+252
+253
+254
+255
+256
+257
+258
+259
+260
+261
+262
+263
+264
+265
+266
+267
+268
+269
+270
+271
+272
+273
+274
+Neural Ising Machines via Unrolling
+bations with the observed rewards yields a finite-difference
+estimate of the gradient, while the learned matrix θL adapts
+the exploration scale across parameters (full derivations are
+provided in App. G). Importantly, this training procedure
+does not assume prior knowledge of the optimal objective
+value. Instead, when a reference energy is used, it is defined
+as the best solution found so far for a given instance during
+training and is updated online as optimization progresses.
+4. Analysis of Learned Dynamics
+4.1. Example of learned dynamics: Emergence of
+Momentum in Single Layer Network
+In order to illustrate the relationship between network
+weights, Ising machine dynamics, and algorithm perfor-
+mance we will briefly consider a simplified example in
+which we have a single layer network with fixed weights
+(M= 1 ) and 10 input neurons ( Tc = 10). In Fig. 2 we
+show how this network evolves over the course of the train-
+ing process. In the first few epochs the network quickly
+learns a greedy “steepest descent” strategy. This is reflected
+by all of the network weights being negative (bottom mid-
+dle of Fig. 2). However, because the set of Ising problem
+instances considered is non-convex, this basic strategy often
+leads the machine to become trapped in suboptimal config-
+urations. During training, the network weights gradually
+adapt to enable a more effective search process, including
+an emergent momentum-like effect that helps the dynamics
+escape metastable states. This behavior is illustrated in the
+upper and lower right panels, where some of the network
+weights become positive (red).
+4.2. Effect of Architecture on Performance
+As shown in Sec. 4.1, a simple single layer network with
+fixed weights can be effective at learning the complex dy-
+namics required of solving these optimization problems.
+This raises the question of how important a more compli-
+cated multi-layer network is, and to what extent parameter
+modulation (annealing) is necessary for the algorithm to
+be effective. However, based on our experimentation with
+different network architectures it appears that both increas-
+ing the number of hidden neurons and degrees of freedom
+for the annealing schedule improve algorithm performance.
+In Fig. 3c and Tab. 4 we show the success rate of both
+cNPIM and dNPIM on N= 100 SK problem instances for
+different network configurations. We see a clear trend in
+which a greater number of parameters results in improved
+performance, although there may be a saturation around 50
+parameters, the results indicate that the network is learning
+some non-trivial strategy that needs many parameters to
+describe. Interestingly, as long as the number of param-
+eters is large, the exact type of parameters (i.e. tradeoff
+between Tc, D and M) does not seem to have a large effect
+on performance. For more details, single-parameter sensi-
+tivity sweeps over Tc, D, and M are provided in App. C.1
+(Fig. 4).
+4.3. Bootstrapping and Fine Tuning
+In order to train the network on hard problem instances, it is
+often not sufficient to simply start with random parameters.
+This is because the success rate of finding the ground state
+will be zero or close to zero so there will be no gradient
+signal for the optimizer to use. To fix this problem we use
+various forms of bootstrapping and fine-tuning, in which the
+network is first tuned on an easier version of the problem
+and then fine-tuned on the desired instance distribution. In
+Figs. 3a and 3d we show two examples of bootstrapping
+and fine-tuning. For example, in Fig. 3a the network is first
+trained from scratch (random initialization) on SK problem
+instances of problem size N= 100 . Then, this pretrained
+network is fine-tuned on problem size N= 500 . Perfor-
+mance of both networks is shown in blue and orange traces
+respectively, showing that the fine-tuned network is more
+effective especially for larger problem sizes. This staged
+training strategy allows the network to scale to larger prob-
+lem sizes by leveraging pretraining on smaller instances.
+For more details on training process see App. F.
+4.4. Out of Distribution Performance
+In Figs. 3a and 3d we show the performance of cNPIM with
+respect to problem size and instance hardness parameter
+respectively. In both cases, when the network is tuned on
+a specific problem distribution, the fine-tuned weights are
+still successful at solving problems in different (but closely
+related) distributions. However, performance tends to de-
+grade the more the distribution differs from the one it is
+tuned on as expected. This shows that although some out-
+of-distribution generalization is possible, fine-tuning is still
+important in order to get the desired performance.
+4.5. Overfitting and Differences between cNPIM and
+dNPIM
+In Figs. 3b and 3e we show the instance-wise perfor-
+mance of cNPIM and dNPIM respectively against that of
+the chaotic amplitude control (CAC) algorithm (Leleu et al.,
+2019; 2021; Leleu & Reifenstein, 2025). Because the net-
+work is trained to optimize average success rate over all
+instances, this can result in overfitting in which the success
+rate of some problem instances is very large whereas others
+will have zero or very low success rate. This is depicted in
+Fig. 3b, where many of the easier instances have low TTS
+(high success rate) for cNPIM compared to CAC, whereas
+for some hard instances cNPIM did not reach the target
+high-quality solution within the evaluation budget, as indi-
+cated by their placement on the horizontal dotted line. On
+5
+275
+276
+277
+278
+279
+280
+281
+282
+283
+284
+285
+286
+287
+288
+289
+290
+291
+292
+293
+294
+295
+296
+297
+298
+299
+300
+301
+302
+303
+304
+305
+306
+307
+308
+309
+310
+311
+312
+313
+314
+315
+316
+317
+318
+319
+320
+321
+322
+323
+324
+325
+326
+327
+328
+329
+Neural Ising Machines via Unrolling
+Figure 2.Example of training single layer neural network Ising machine. Upper left: the average reward (success rate) of the network
+with respect to training epoch. The reward starts negative because of an initial bootstrapping phase in which bad trajectories are penalized.
+Two snapshots of the network parameters are taken and shown in the right two figures: network A at epoch 19, and network B at epoch
+99. Lower left: residual Ising energy (difference with best-known solution) is shown as a function of iteration step for both networks.
+Darker colored trajectories indicate the ground state was found. Bottom middle and right: network weights of network A and network B
+respectively. Blue and red connections depict negative and positive network weights respectively. Top middle and right: trajectory ofxi(t)
+variables for network A and network B respectively. Each color represents a different variable of the Ising problem.
+Figure 3.a) Performance (Time to solution) of cNPIM on Sherrington-Kirkpatrick (SK) problem instances. Colored traces show
+performance with and without fine-tuning showing limited (but nonzero) ability to generalize over problem size. Dotted trace shows
+baseline Ising machine performance (Chaotic amplitude control (Leleu et al., 2019; 2021; Leleu & Reifenstein, 2025)). b, e) Scatter plot
+showing the TTS of 100 random SK problem instances of problem size N= 800 against that of CAC for cNPIM and dNPIM respectively.
+c) Success rate for different architectures of cNPIM and dNPIM as a function of total parameter count. The same data is shown in Tab. 4.
+d) TTS is shown as a function of hardness parameter for the Wishart planted ensemble (WPE) problem instances (Hamze et al., 2020).
+Colored traces show cNPIM fine-tuned on different hardness parameters while dotted line shows Ising machine baseline (CAC).
+6
+330
+331
+332
+333
+334
+335
+336
+337
+338
+339
+340
+341
+342
+343
+344
+345
+346
+347
+348
+349
+350
+351
+352
+353
+354
+355
+356
+357
+358
+359
+360
+361
+362
+363
+364
+365
+366
+367
+368
+369
+370
+371
+372
+373
+374
+375
+376
+377
+378
+379
+380
+381
+382
+383
+384
+Neural Ising Machines via Unrolling
+the other hand, in Fig. 3e we see this effect is much less
+prevalent for dNPIM. Although cNPIM achieves a larger
+reward value (average success rate), and smaller TTS for
+the median difficulty problem instances (indicated by red
+lines), it struggles on the hardest problem instances relative
+to dNPIM and CAC.
+While a full explanation is beyond the scope of this work,
+one hypothesis is that because cNPIM uses continuous cou-
+pling it learns to optimize some relaxed version of the under-
+lying discrete Ising problem. Although this relaxed problem
+may align well with the real problem for some instances, it
+may misalign on harder instances, which can reduce suc-
+cess probability when targeting best-known energies. On
+the other hand, because dNPIM uses discrete couplings the
+internal state of the algorithm is always based on true so-
+lutions to the underlying Ising problem. This forces it to
+be more faithful in its ability to search over the true solu-
+tion space which may cause it to take longer for the easier
+problem instances.
+5. Benchmark Results
+We begin by reporting conventional combinatorial optimiza-
+tion metrics, namely objective quality and wall-clock time,
+as summarized in Tab. 1. Because our method is closely
+related to both neural combinatorial optimization and dy-
+namical Ising machines, we evaluate it using benchmarks
+commonly adopted in each community, which differ in prob-
+lem types and evaluation metrics. In the neural combinato-
+rial optimization literature, both average objective value and
+computation time are typically reported (Zhang et al., 2023;
+Sanokowski et al., 2025). Additionally, common bench-
+mark problems include maximum independent set and Max-
+Clique problems based on graphs from (Xu et al., 2005) and
+Max-Cut problems from the Barab ´asi–Albert (BA) distri-
+bution (Albert & Barab ´asi, 2002). In Tab. 1 we compare
+against the results of (Sanokowski et al., 2025) on MIS,
+Max-Clique and Max-Cut problems. Although (Sanokowski
+et al., 2025) also reports results on the maximum dominating
+set problem, we omit these comparisons since the problem
+does not admit a direct quadratic Ising formulation. How-
+ever, our framework can easily be extended to other types
+of problems like this (see App. D) which can be explored
+in future work. We find that in four out of the five cases
+dNPIM is able to achieve a better average objective value
+than the results of (Sanokowski et al., 2025). However, in
+the case of the larger graphs our method does take longer.
+Although we use the same hardware as (Sanokowski et al.,
+2025), the observed wall-clock differences may largely re-
+flect implementation choices, such as sparse graph kernels
+in (Sanokowski et al., 2025) versus dense PyTorch matrix
+operations in our current implementation. A fully optimized,
+implementation-matched comparison is left for future work.
+In literature on Ising machines, time to solution (TTS) is
+typically used as a metric. TTS takes into account both com-
+putation time of a single run of the algorithm and the quality
+of solutions achieved per run into a single metric. TTS is
+defined as an estimate of the amount of time you would need
+to run the algorithm to have a 99% chance of finding the
+solution. Because these are NP-hard problems and we do
+not know the true optimum we use “solution” to mean the
+best solution found by the algorithms we are benchmarking
+(for more details on TTS and how it is calculated, see App.
+H). For benchmark problem instances, we use the G-set
+instances, which are a set of both weighted and unweighted
+graphs with a variety of structures. The median time-to-
+solution results across different G-set instance families are
+summarized in Tab. 2, showing that dNPIM achieves state-
+of-the-art or competitive performance on most weighted and
+unweighted graph classes. These graphs are typically inter-
+preted as Max-Cut problems for benchmarking. In order to
+train our network, for each type of graph in the G-set we
+generate a training set of problem instances which is used
+to fine-tune a network for that specific set of graph param-
+eters (see App. I for details). We compare the resulting
+algorithm against the results of (Reifenstein et al., 2021)
+and (Goto et al., 2021). We use the cut values reported in
+these works when computing TTS. Note that for the results
+of (Reifenstein et al., 2021) and (Goto et al., 2021) algo-
+rithm parameters are also tuned for each instance type. We
+find that on almost all problem instances dNPIM matches
+or improves upon the existing Ising machine state-of-the-
+art with the exception of the unweighted planar instances.
+These instances are more difficult and other Ising machine
+algorithms struggle on them as well, especially dSBM (as
+shown in (Reifenstein et al., 2021)). Improving robustness
+on this subset of graphs through architectural choices or
+training strategies is an interesting direction for future work.
+To further assess scalability with respect to problem size,
+we report instance-wise results on two representative G-set
+graphs: G1 ( N= 800 ) and the substantially larger G22
+(N= 2000 ). As summarized in Tab. 3, dNPIM consistently
+reaches cut values equal to the best-known solutions on both
+instances while maintaining competitive time-to-solution as
+problem size increases. This demonstrates that the proposed
+method scales to large problem sizes without degradation in
+solution quality.
+Overall, we find that in almost all cases we have explored,
+our NPIM approach is able to compete with state-of-the
+art results. This is promising because the simplicity and
+flexibility of the method makes it attractive as a technique
+that can quickly be adapted to a wide variety of optimization
+problems.
+7
+385
+386
+387
+388
+389
+390
+391
+392
+393
+394
+395
+396
+397
+398
+399
+400
+401
+402
+403
+404
+405
+406
+407
+408
+409
+410
+411
+412
+413
+414
+415
+416
+417
+418
+419
+420
+421
+422
+423
+424
+425
+426
+427
+428
+429
+430
+431
+432
+433
+434
+435
+436
+437
+438
+439
+Neural Ising Machines via Unrolling
+Table 1.Comparison of different methods on Max Independent Set (MIS), Max Clique (MaxCl) and MaxCut problems. Solution
+size (higher is better) and computation time (lower is better) are used as dual performance indicators. We compare with data from
+(Sanokowski et al., 2025) which includes benchmark results of DiffUCO (Sanokowski et al., 2024) and LTFT (Zhang et al., 2023) as well.
+Computation times are based on PyTorch code running on an NVIDIA A100 GPU. ”top 30” refers to the fact that since our algorithm is
+less computationally intensive per trajectory than the other algorithms we compare it to we run it 30 times in parallel and then use the best
+solution found out of these trajectories for our comparison.
+MIS-small MIS-large MaxCl-small MaxCut-small MaxCut-large
+Method Size↑time↓Size↑time↓Size↑time↓Size↑time↓Size↑time↓
+Gurobi20.13±0.036:2942.51±0.06 ∗ 14:19:2319.06±0.0311:00730.87±2.35∗ 17:00:002944.38±0.86∗ 2:35:10:00
+LTFT (r)19.181:0437.488:4416.241:247045:54286442:40
+DiffUCO19.42±0.030:0239.44±0.120:0317.40±0.020:02731.30±0.750:022974.60±7.730:02
+SDDS:rKLw/RL19.62±0.010:0239.97±0.080:0318.89±0.040:02731.93±0.740:022971.62±8.150:02
+dNPIM (top 30)19.90:0240.2971:2018.70:02734.9080:022988.5511:20
+Table 2.Comparison of different methods on the G-set max-cut
+problem instances. Time-to-solution is used as performance metric.
+Time-to-solution is reported in units of number of iterations to
+solution. This is because the compute intensive matrix vector
+product is the computational bottleneck for each algorithm. In
+this table, we report medians over each group of instances, but for
+instance-wise performance see Tab. 5. Target cut values used to
+evaluate the success of the algorithm are taken from (Goto et al.,
+2021) and represent the current best-known cut values for these
+instances. State of the art Ising machine TTS is obtained by taking
+the best TTS from (Reifenstein et al., 2021) which includes the
+results of (Goto et al., 2021) as well.
+N=800, R, + N=800, R, +/- N=800, T, +/- N=800, P, + N=800, P, +/-Method TTS↓TTS↓TTS↓TTS↓TTS↓
+CAC 2.09e+05 4.31e+05 3.38e+051.81e+068.87e+05CFC 2.39e+05 2.24e+05 2.22e+05 2.00e+06 3.44e+05dSBM 4.00e+05 3.59e+05 4.08e+05 2.12e+07 5.25e+06
+dNPIM1.00e+05 6.55e+04 5.51e+044.42e+072.04e+05
+Table 3.Scalability of dNPIM on representative large G-set Max-
+Cut instances. Time-to-solution (TTS) is reported in number of
+iterations required to reach the target cut value. dNPIM attains the
+best-known cut values for bothN= 800 and N= 2000 instances
+while maintaining competitive TTS relative to prior state-of-the-art
+Ising-machine methods(Reifenstein et al., 2021).
+Instance SizeNdNPIM TTS SOTA TTS Cut Found Best-Known
+G1 8002.55×10 4 6.01×104 11624 11624
+G22 20009.77×10 5 2.56×106 13359 13359
+6. Conclusions and Discussion
+We present a data-driven method for heuristic combinatorial
+optimization that combines algorithm unrolling, dynamical
+Ising machines, and zeroth-order training to learn compact
+update rules from optimization performance. On standard
+benchmarks, the resulting neural Ising machine achieves
+competitive performance while retaining the simplicity and
+scalability of classical Ising-machine formulations. We
+conclude by discussing limitations of the current approach
+and directions for future work.
+In the context of this work, there are two types of scalabil-
+ity: with problem size ( N), and with number of network
+parameters. Empirically, we observe favorable scaling with
+problem size on the benchmarks considered (see Fig. 3a
+and Tab. 3). However, scaling with number of parame-
+ters can be a potential limitation. This stems from the fact
+that we use a zeroth-order optimization method which will
+cause an additional overhead in the optimization when more
+parameters are added (for example see Fig. 4). An interest-
+ing future direction would be to combine the zeroth-order
+method used in this work with some sort of policy gradient
+or backpropagation-like method to see if the network could
+scale to a larger number of parameters.
+Another limitation of our method concerns interpretabil-
+ity. While interpretability remains a general challenge for
+learning-based optimization methods and, to a lesser extent,
+for dynamical Ising machines, this work does not aim to
+fully resolve it. Nonetheless, the learned dynamics exhibit
+clear qualitative structure, and we are able to relate their be-
+havior to familiar optimization concepts such as momentum
+and annealing, providing some insight into how effective
+search strategies emerge from training. We show to some
+extent that these phenomena are emergent properties of our
+network when it is trained with the sole objective of maxi-
+mizing reward (see Fig. 2). However, this does not answer
+the question of why these dynamics are so important for cer-
+tain problem instances. A more detailed understanding of
+the dynamical complexity generated by the learned iterative
+map is still needed, and is an interesting direction for future
+work.
+Although we evaluate our approach on a range of standard
+benchmarks, the experiments in this work focus on problem
+instances that admit a quadratic optimization over binary
+variables. As discussed in App. D, the framework is struc-
+turally compatible with other classes of combinatorial opti-
+mization problems, since the quantities provided as input to
+the MLP can be viewed as discrete gradients of the objec-
+tive. Incorporating problems such as SAT or mixed-integer
+programming would require appropriate problem-specific
+formulations and careful empirical study, which we leave
+for future work.
+8
+440
+441
+442
+443
+444
+445
+446
+447
+448
+449
+450
+451
+452
+453
+454
+455
+456
+457
+458
+459
+460
+461
+462
+463
+464
+465
+466
+467
+468
+469
+470
+471
+472
+473
+474
+475
+476
+477
+478
+479
+480
+481
+482
+483
+484
+485
+486
+487
+488
+489
+490
+491
+492
+493
+494
+Neural Ising Machines via Unrolling
+Impact Statement
+This work proposes a learned heuristic for NP-hard
+Ising/Max-Cut optimization. The primary intended impact
+is to improve the efficiency of solving large combinatorial
+optimization problems that arise in scientific computing
+and engineering design. As a general-purpose optimization
+method, it could also be applied in domains with negative
+societal consequences; we therefore encourage application-
+specific oversight when used in high-stakes settings.
+References
+Ahn, S., Seo, Y ., and Shin, J. Learning what to defer for
+maximum independent sets. In III, H. D. and Singh, A.
+(eds.),Proceedings of the 37th International Conference
+on Machine Learning, volume 119 ofProceedings of
+Machine Learning Research, pp. 134–144. PMLR, 13–
+18 Jul 2020. URL https://proceedings.mlr.
+press/v119/ahn20a.html.
+Alanzi, E. and Menai, M. E. B. Solving the travel-
+ing salesman problem with machine learning: a re-
+view of recent advances and challenges.Artificial In-
+telligence Review, 58(9):267, 2025. doi: 10.1007/
+s10462-025-11267-x. URL https://doi.org/10.
+1007/s10462-025-11267-x.
+Albert, R. and Barab´asi, A.-L. Statistical mechanics of com-
+plex networks.Rev. Mod. Phys., 74:47–97, Jan 2002. doi:
+10.1103/RevModPhys.74.47. URL https://link.
+aps.org/doi/10.1103/RevModPhys.74.47.
+Balatsoukas-Stimming, A. and Studer, C. Deep unfolding
+for communications systems: A survey and some new
+directions. In2019 IEEE International Workshop on
+Signal Processing Systems (SiPS), pp. 266–271, 2019.
+doi: 10.1109/SiPS47522.2019.9020494.
+Bello, I., Pham, H., Le, Q. V ., Norouzi, M., and Bengio,
+S. Neural combinatorial optimization with reinforcement
+learning, 2017. URL https://arxiv.org/abs/
+1611.09940.
+Bogyrbayeva, A., Yoon, T., Ko, H., Lim, S., Yun, H., and
+Kwon, C. A deep reinforcement learning approach for
+solving the traveling salesman problem with drone, 2022.
+URLhttps://arxiv.org/abs/2112.12545.
+Bresson, X. and Laurent, T. The transformer network for
+the traveling salesman problem, 2021. URL https:
+//arxiv.org/abs/2103.03012.
+B¨unz, B. and Lamm, M. Graph neural networks and
+boolean satisfiability, 2017. URL https://arxiv.
+org/abs/1702.03592.
+Cappart, Q., Ch ´etelat, D., Khalil, E., Lodi, A., Morris,
+C., and Veliˇckovi´c, P. Combinatorial optimization and
+reasoning with graph neural networks, 2022. URL
+https://arxiv.org/abs/2102.09544.
+Chen, T., Chen, X., Chen, W., Heaton, H., Liu, J., Wang,
+Z., and Yin, W. Learning to optimize: A primer and a
+benchmark, 2021. URL https://arxiv.org/abs/
+2103.12828.
+Chen, X., Liu, J., and Yin, W. Learning to optimize: A tuto-
+rial for continuous and mixed-integer optimization, 2024.
+URLhttps://arxiv.org/abs/2405.15251.
+Dai, H., Khalil, E. B., Zhang, Y ., Dilkina, B., and Song,
+L. Learning combinatorial optimization algorithms over
+graphs, 2018. URL https://arxiv.org/abs/
+1704.01665.
+Deudon, M., Cournut, P., Lacoste, A., Adulyasak, Y ., and
+Rousseau, L.-M. Learning heuristics for the tsp by pol-
+icy gradient. In van Hoeve, W.-J. (ed.),Integration of
+Constraint Programming, Artificial Intelligence, and Op-
+erations Research, pp. 170–181, Cham, 2018. Springer
+International Publishing. ISBN 978-3-319-93031-2.
+Goto, H., Tatsumura, K., and Dixon, A. R. Combinato-
+rial optimization by simulating adiabatic bifurcations in
+nonlinear hamiltonian systems.Science advances, 5(4):
+eaav2372, 2019.
+Goto, H., Endo, K., Suzuki, M., Sakai, Y ., Kanao, T.,
+Hamakawa, Y ., Hidaka, R., Yamasaki, M., and Tat-
+sumura, K. High-performance combinatorial opti-
+mization based on classical mechanics.Science Ad-
+vances, 7(6):eabe7953, 2021. doi: 10.1126/sciadv.
+abe7953. URL https://www.science.org/
+doi/abs/10.1126/sciadv.abe7953.
+Gregor, K. and LeCun, Y . Learning fast approximations
+of sparse coding. InProceedings of the 27th Interna-
+tional Conference on International Conference on Ma-
+chine Learning, ICML’10, pp. 399–406, Madison, WI,
+USA, 2010. Omnipress. ISBN 9781605589077.
+Hamze, F., Raymond, J., Pattison, C. A., Biswas, K.,
+and Katzgraber, H. G. Wishart planted ensemble: A
+tunably rugged pairwise ising model with a first-order
+phase transition.Physical Review E, 101(5), May
+2020. ISSN 2470-0053. doi: 10.1103/physreve.101.
+052102. URL http://dx.doi.org/10.1103/
+PhysRevE.101.052102.
+Hopfield, J. J. Neural networks and physical sys-
+tems with emergent collective computational abili-
+ties.Proceedings of the National Academy of Sci-
+ences, 79(8):2554–2558, 1982. doi: 10.1073/pnas.79.8.
+9
+495
+496
+497
+498
+499
+500
+501
+502
+503
+504
+505
+506
+507
+508
+509
+510
+511
+512
+513
+514
+515
+516
+517
+518
+519
+520
+521
+522
+523
+524
+525
+526
+527
+528
+529
+530
+531
+532
+533
+534
+535
+536
+537
+538
+539
+540
+541
+542
+543
+544
+545
+546
+547
+548
+549
+Neural Ising Machines via Unrolling
+2554. URL https://www.pnas.org/doi/abs/
+10.1073/pnas.79.8.2554.
+I. Garmendia, A., Ceberio, J., and Mendiburu, A. Appli-
+cability of neural combinatorial optimization: A critical
+view.ACM Trans. Evol. Learn. Optim., 4(3), July 2024.
+doi: 10.1145/3647644. URL https://doi.org/10.
+1145/3647644.
+Joshi, C. K., Laurent, T., and Bresson, X. An efficient graph
+convolutional network technique for the travelling sales-
+man problem, 2019. URL https://arxiv.org/
+abs/1906.01227.
+Kalinin, K. P., Mourgias-Alexandris, G., Ballani, H., Berloff,
+N. G., Clegg, J. H., Cletheroe, D., Gkantsidis, C., Haller,
+I., Lyutsarev, V ., Parmigiani, F., et al. Analog itera-
+tive machine (aim): using light to solve quadratic op-
+timization problems with mixed variables.arXiv preprint
+arXiv:2304.12594, 2023.
+Karalias, N. and Loukas, A. Erdos goes neural: an unsuper-
+vised learning framework for combinatorial optimization
+on graphs, 2021. URL https://arxiv.org/abs/
+2006.10643.
+Kool, W., van Hoof, H., and Welling, M. Attention, learn to
+solve routing problems!, 2019. URL https://arxiv.
+org/abs/1803.08475.
+Kotary, J., Dinh, M. H., and Fioretto, F. Backpropaga-
+tion of unrolled solvers with folded optimization. In
+Proceedings of the Thirty-Second International Joint
+Conference on Artificial Intelligence, IJCAI-2023, pp.
+1963–1970. International Joint Conferences on Artifi-
+cial Intelligence Organization, August 2023. doi: 10.
+24963/ijcai.2023/218. URL http://dx.doi.org/
+10.24963/ijcai.2023/218.
+Leleu, T. and Reifenstein, S. Non-equilibrium dy-
+namics of hybrid continuous-discrete ground-state
+sampling. In Yue, Y ., Garg, A., Peng, N., Sha,
+F., and Yu, R. (eds.),International Conference on
+Representation Learning, volume 2025, pp. 75862–
+75886, 2025. URL https://proceedings.
+iclr.cc/paper_files/paper/2025/file/
+bcbdc25dc4f0be5ae8ac07232df6e33a-Paper-Conference.
+pdf.
+Leleu, T., Yamamoto, Y ., McMahon, P. L., and Aihara, K.
+Destabilization of local minima in analog spin systems by
+correction of amplitude heterogeneity.Phys. Rev. Lett.,
+122:040607, Feb 2019. doi: 10.1103/PhysRevLett.122.
+040607. URL https://link.aps.org/doi/10.
+1103/PhysRevLett.122.040607.
+Leleu, T., Khoyratee, F., Levi, T., Hamerly, R., Kohno, T.,
+and Aihara, K. Scaling advantage of chaotic amplitude
+control for high-performance combinatorial optimization.
+Communications Physics, 4(1):266, 2021. doi: 10.1038/
+s42005-021-00768-0. URL https://doi.org/10.
+1038/s42005-021-00768-0.
+Lu, B., Gao, Y .-P., Wen, K., and Wang, C. Combinato-
+rial optimization solving by coherent Ising machines
+based on spiking neural networks.Quantum, 7:1151,
+October 2023. ISSN 2521-327X. doi: 10.22331/
+q-2023-10-24-1151. URL https://doi.org/10.
+22331/q-2023-10-24-1151.
+Martins, M. S. E., Sousa, J. M. C., and Vieira, S. A system-
+atic review on reinforcement learning for industrial com-
+binatorial optimization problems.Applied Sciences, 15
+(3), 2025. ISSN 2076-3417. doi: 10.3390/app15031211.
+URL https://www.mdpi.com/2076-3417/15/
+3/1211.
+Monga, V ., Li, Y ., and Eldar, Y . C. Algorithm unrolling:
+Interpretable, efficient deep learning for signal and image
+processing, 2020. URL https://arxiv.org/abs/
+1912.10557.
+Reifenstein, S., Kako, S., Khoyratee, F., Leleu, T., and
+Yamamoto, Y . Coherent ising machines with optical
+error correction circuits, 2021. URL https://arxiv.
+org/abs/2108.07369.
+Reifenstein, S., Leleu, T., and Yamamoto, Y . Dynamic
+anisotropic smoothing for noisy derivative-free optimiza-
+tion, 2024. URL https://arxiv.org/abs/2405.
+01731.
+Salimans, T., Ho, J., Chen, X., Sidor, S., and Sutskever, I.
+Evolution strategies as a scalable alternative to reinforce-
+ment learning, 2017. URL https://arxiv.org/
+abs/1703.03864.
+Sanokowski, S., Berghammer, W., Hochreiter, S., and
+Lehner, S. Variational annealing on graphs for combi-
+natorial optimization, 2023. URL https://arxiv.
+org/abs/2311.14156.
+Sanokowski, S., Hochreiter, S., and Lehner, S. A diffusion
+model framework for unsupervised neural combinatorial
+optimization. InProceedings of the 41st International
+Conference on Machine Learning, ICML’24. JMLR.org,
+2024.
+Sanokowski, S., Berghammer, W., Ennemoser, M., Wang,
+H. P., Hochreiter, S., and Lehner, S. Scalable discrete
+diffusion samplers: Combinatorial optimization and sta-
+tistical physics, 2025. URL https://arxiv.org/
+abs/2502.08696.
+10
+550
+551
+552
+553
+554
+555
+556
+557
+558
+559
+560
+561
+562
+563
+564
+565
+566
+567
+568
+569
+570
+571
+572
+573
+574
+575
+576
+577
+578
+579
+580
+581
+582
+583
+584
+585
+586
+587
+588
+589
+590
+591
+592
+593
+594
+595
+596
+597
+598
+599
+600
+601
+602
+603
+604
+Neural Ising Machines via Unrolling
+Schuetz, M. J. A., Brubaker, J. K., and Katzgraber, H. G.
+Combinatorial optimization with physics-inspired graph
+neural networks.Nature Machine Intelligence, 4(4):
+367–377, April 2022. ISSN 2522-5839. doi: 10.1038/
+s42256-022-00468-6. URL http://dx.doi.org/
+10.1038/s42256-022-00468-6.
+Song, Q., Wang, J., Li, J., Liu, G., and Xu, H. A learning-
+only method for multi-cell multi-user mimo sum rate
+maximization. InIEEE INFOCOM 2024 - IEEE Confer-
+ence on Computer Communications, pp. 291–300, 2024.
+doi: 10.1109/INFOCOM52122.2024.10621282.
+Sui, J., Ding, S., Huang, X., Yu, Y ., Liu, R., Xia, B., Ding,
+Z., Xu, L., Zhang, H., Yu, C., and Bu, D. A survey on
+deep learning-based algorithms for the traveling salesman
+problem.Frontiers of Computer Science, 19(6):196322,
+2024. doi: 10.1007/s11704-024-40490-y. URL https:
+//doi.org/10.1007/s11704-024-40490-y.
+Sun, Z. and Yang, Y . Difusco: Graph-based diffusion solvers
+for combinatorial optimization, 2023. URL https://
+arxiv.org/abs/2302.08224.
+Tan, E. Z. C., Chaux, C., Soubies, E., and Tan, V . Y . F.
+Deep unrolling for nonconvex robust principal component
+analysis, 2023. URL https://arxiv.org/abs/
+2307.05893.
+Thinklab-SJTU. Awesome Machine Learning for Com-
+binatorial Optimization. https://github.com/
+Thinklab-SJTU/awesome-ml4co, 2021. Ac-
+cessed: 2025-07-15.
+Vinyals, O., Fortunato, M., and Jaitly, N. Pointer net-
+works, 2017. URL https://arxiv.org/abs/
+1506.03134.
+Wang, T. and Roychowdhury, J. Oim: Oscillator-based ising
+machines for solving combinatorial optimisation prob-
+lems. InInternational Conference on Unconventional
+Computation and Natural Computation, pp. 232–256.
+Springer, 2019.
+Wang, Z., Marandi, A., Wen, K., Byer, R. L., and Yamamoto,
+Y . Coherent ising machine based on degenerate optical
+parametric oscillators.Physical Review A, 88(6):063853,
+2013.
+Wei, S., Cheung, G., Chen, F., and Selesnick, I. Un-
+rolling nonconvex graph total variation for image denois-
+ing, 2025. URL https://arxiv.org/abs/2506.
+02381.
+Williams, R. J. Simple statistical gradient-following algo-
+rithms for connectionist reinforcement learning.Ma-
+chine Learning, 8(3):229–256, 1992. doi: 10.1007/
+BF00992696. URL https://doi.org/10.1007/
+BF00992696.
+Xu, K., Boussemart, F., Hemery, F., and Lecoutre, C. A
+simple model to generate hard satisfiable instances, 2005.
+URLhttps://arxiv.org/abs/cs/0509032.
+Yamamoto, Y ., Aihara, K., Leleu, T., Kawarabayashi, K.-i.,
+Kako, S., Fejer, M., Inoue, K., and Takesue, H. Coherent
+ising machines—optical neural networks operating at the
+quantum limit.npj Quantum Information, 3(1):49, 2017.
+Yamamoto, Y ., Leleu, T., Ganguli, S., and Mabuchi, H.
+Coherent ising machines—quantum optics and neural
+network perspectives.Applied Physics Letters, 117(16),
+2020.
+Zanfir, A. and Sminchisescu, C. Deep learning of graph
+matching. InProceedings of the IEEE Conference on
+Computer Vision and Pattern Recognition (CVPR), June
+2018.
+Zhang, D., Dai, H., Malkin, N., Courville, A., Bengio, Y .,
+and Pan, L. Let the flows tell: Solving graph combinato-
+rial optimization problems with gflownets, 2023. URL
+https://arxiv.org/abs/2305.17010.
+Zhou, F., Lischka, A., Kulcsar, B., Wu, J., Chehreghani,
+M. H., and Laporte, G. Learning for routing: A guided
+review of recent developments and future directions, 2025.
+URLhttps://arxiv.org/abs/2507.00218.
+11
+605
+606
+607
+608
+609
+610
+611
+612
+613
+614
+615
+616
+617
+618
+619
+620
+621
+622
+623
+624
+625
+626
+627
+628
+629
+630
+631
+632
+633
+634
+635
+636
+637
+638
+639
+640
+641
+642
+643
+644
+645
+646
+647
+648
+649
+650
+651
+652
+653
+654
+655
+656
+657
+658
+659
+Neural Ising Machines via Unrolling
+A. Equivalence of Max-Cut, Max-Clique, MIS and QUBO to the quadratic Ising problem
+In this section we will show the exact mathematical form between a these different types of combinatorial optimization
+problems. The graph-based problems will be described by a adjacency matrix A while the QUBO coupling matrix will be
+denotedQ.
+A.1. Max-Cut
+Jij =A ij li = 0(9)
+A.2. Max-Clique
+Jij = (1−A ij)l i = 0.9 +
+X
+j
+(1−A ij)(10)
+A.3. MIS
+Jij =A ij li = 0.9 +
+X
+j
+Aij (11)
+A.4. QUBO
+Jij =Q ij li =
+X
+j
+Qij (12)
+B. Additional Details on Ising Machines
+In this section we will show some of the equations for other Ising machines and how they fit into the mathematical framework
+of equations equation 2 and equation 3.
+B.1. Chaotic Amplitude Control (CAC)
+Chaotic amplitude control (Leleu et al., 2019; 2021) is described by the following iterative update equations:
+xi(t+ 1) =x i(t) +dt
+
+−axi(t)−x i(t)3 −ξe i(t)
+
+X
+j
+Jijxj(t) +l i
+
+
+
+ (13)
+ei(t+ 1) =e i(t) +dtβe i(t)
+ 
+1−x i(t)2
+(14)
+Withx i(0)∈ N(0,1)ande i(0) = 1. This can then be put into the form of equations 2 and 3 by definingFrecursively as
+x(t) =F(t, h(0), ..., h(t−1))(15)
+x(t+ 1) =x(t) +dt
+ 
+−ax(t)−x(t) 3 −e(t)h(t)
+
+(16)
+e(t+ 1) =e(t) +dtβe(t)
+ 
+1−x(t) 2
+(17)
+x(0)∈ N(0,1)e(0) = 1(18)
+similarly, other Ising machines such as CIM (Wang et al., 2013), and SBM (Goto et al., 2021) can be described in a recursive
+way like this.
+12
+660
+661
+662
+663
+664
+665
+666
+667
+668
+669
+670
+671
+672
+673
+674
+675
+676
+677
+678
+679
+680
+681
+682
+683
+684
+685
+686
+687
+688
+689
+690
+691
+692
+693
+694
+695
+696
+697
+698
+699
+700
+701
+702
+703
+704
+705
+706
+707
+708
+709
+710
+711
+712
+713
+714
+Neural Ising Machines via Unrolling
+B.2. Analog Iterative Machine (AIM)
+We will also include the equations for the analog iterative machine (Kalinin et al., 2023) because it is an interesting case in
+which the forumla forFcan be written explicitly. An AIM is described by
+zi(t+ 1) =z i(t) +dt
+
+−α
+X
+j
+Jij tanh(zj(t))−β(t)z i(t) +γ(z i(t)−z i(t−1))
+
+ (19)
+wherez i(0)andz i(1)are initialized randomly. If we letβ(t) =βto be constant, then we can write
+zi(t+ 1) =
+X
+t′=0,...,t+1
+− λt−t′
+1 −λ t−t′
+2
+λ1 −λ 2
+α
+X
+j
+Jij tanh(zj(t′))(20)
+whereλ 1 andλ 2 are eigenvalues of the matrix
+1 +dt(−β+γ)dtγ
+1 0
+
+. This allows us to writeFin the explicit form
+tanh(z(t)) =F(t, h(0), ..., h(t−1)) = tanh
+
+ X
+t′=0,...,t+1
+λt−t′
+1 −λ t−t′
+2
+λ1 −λ 2
+h(t′)
+
+ (21)
+In addition to being explicit, this mathematical form is also equivalent to a single layer cNPIM with Tc =∞ (or just
+Tc ≥T).
+C. Effect of Architectural Hyperparameters
+C.1. Hyperparameter sweep
+We sweep one hyperparameter at a time to isolate its effect on the performance of neural parameterized Ising machines.
+Figure 4 shows results for varying the history lengthTc (panel a), the number of hidden neurons D (panel b), and the number
+of Fourier modes M controlling the time dependence of parameters (panel c). In each case, we compare the continuous
+(cNPIM) and discrete (dNPIM) variants trained on N= 100 Sherrington–Kirkpatrick instances uszing the success-rate
+reward. The optimization procedure usesR= 400trajectories per epoch, batch sizeB= 20, and was run for800epochs.
+In conclusion, all three architectural parameters materially influence performance, with larger Tc, D, and M generally
+improving the success rate. The small decrease observed at the largest values is most likely due to the limited number of
+training epochs, which prevents full convergence of the higher-capacity models rather than indicating a true decline in
+effectiveness.
+C.2. Choice of temporal basis
+We compare different temporal basis functions used to parameterize the time dependence of NPIM weights. Figure 5
+shows results for Fourier, Legendre, and Chebyshev bases, evaluated forM∈1,3,5 with fixed history length Tc = 8 and
+hidden dimension D= 3 . Both cNPIM and dNPIM are trained on N= 100 Sherrington–Kirkpatrick instances using the
+success-rate reward. Training was run for 400 epochs with R= 400 trajectories per epoch and batch size B= 20 . The
+results indicate that all three bases are viable choices for encoding temporal variation, with performance improving as M
+increases regardless of basis type. Differences between bases are relatively minor at small M, and all yield comparable
+performance at larger M, suggesting that the precise functional form of the temporal basis is less critical than the number of
+degrees of freedom provided.
+D. Generalized Algorithm
+In this section we will show one way in which the proposed framework can be generalized to combinatorial and other types
+of optimization problems beyond the Ising problem. Imagine a general setting where we are given N variables which are
+chosen from a set S. An objective function is defined as g:S N →R and additionally a “gradient direction” operator
+∂g:S N →S N which points in a direction of increased objective value. Additionally, we define a “gradient magnitude”
+13
+715
+716
+717
+718
+719
+720
+721
+722
+723
+724
+725
+726
+727
+728
+729
+730
+731
+732
+733
+734
+735
+736
+737
+738
+739
+740
+741
+742
+743
+744
+745
+746
+747
+748
+749
+750
+751
+752
+753
+754
+755
+756
+757
+758
+759
+760
+761
+762
+763
+764
+765
+766
+767
+768
+769
+Neural Ising Machines via Unrolling
+4 6 8 10 12
+history length Tc
+0.25
+0.30
+0.35
+0.40
+0.45
+0.50
+0.55
+0.60reward (success rate)
+aa
+1 2 3 4 5
+number of hidden neurons D
+bb
+1 2 3 4 5
+degrees of freedom per parameter M
+cc
+cNPIM (epochs=1600, R=600)
+dNPIM (epochs=1600, R=600)
+cNPIM (epochs=800, R=400)
+dNPIM (epochs=800, R=400)
+Figure 4.Hyperparameter sweeps of NPIM on SK instances. a) Final success rate as a function of history length Tc with D= 3 and
+M= 3 . b) Success rate as a function of hidden neurons D with Tc = 8 and M= 3 . c) Success rate as a function of Fourier modes M
+with Tc = 8 and D= 3 . Curves compare the continuous (cNPIM) and discrete (dNPIM) variants trained on N= 100 SK instances.
+Batch sizeB= 20, and the success-rate reward.
+operator ∆g:S N →R N to estimate the change in objective value cause by each individual variable update. We then define
+an iterative algorithm
+xi(t+ 1) =F(t, x i(t), ∂gi(t),∆g i(t), x i(t−1), ∂g i(t−1),∆g i(t−1), ...., x i(0), ∂gi(0),∆g i(0))(22)
+the function F can then be parameterized by some sort of neural network depending on the exact form of S. This framework
+is meant to be general for many types of optimization problems but in many specific examples it can be made much simpler.
+For example, we can consider a more general optimization over a set of binary variables whereS={−1,+1} like Ising, but
+the objective function takes some more general form. Then, ∆gi(x) =g(x| xi=+1)−g(x| xi=−1), ∂gi(x) =sign(∆g i(x)).
+This includes problems like boolean SAT or MDS (maximum dominating set). Additionally, we can extend this
+framework to problems like integer programming problems where S=Z or some subset of Z as well as continu-
+ous optimization where S=R . In these cases ∆g and ∂g would represent the discrete and continuous gradients, respectively.
+However, when it comes to problems like TSP or other routing-like problems it may be difficult to apply this
+framework. This is because it is unclear how to “factor” the space of solutions into a product ofN copies of a set S. This
+also has to do with the fact that for problems like TSP, more non-local updates might be needed such as what is used in
+heuristics like 2-opt, 3-opt and Lin-Kerrington. This could represent a general drawback of this type of framework which
+might also be reflected in its poorer performance on max-clique problems (see table 1). However we are optimistic that this
+drawback could potentially be overcome by a more sophisticated architecture that allows for non-local updates.
+E. Zeroth-Order Optimizer vs Policy Gradient Method
+Although it has not been touched on much in the main text, a key result of our findings is that training Ising machine
+dynamics using the policy gradient method of RL does not appear to be very effective. In this section we will provide some
+more details and briefly explain why we believe this is.
+To formalize this we will first need to write the Ising machine dynamics in the form of a Markov decision pro-
+cess so we can apply the policy gradient. The set of possible states in this case will be x∈ {−1,+1} N and each step the
+algorithm will output a probability distribution over this set.
+P(x=σ) =
+Y 1 +σ iF(t, h i(0), ..., hi(t−1))
+2 (23)
+Using this formulation we can the apply the policy gradient method (Williams, 1992) to tune the network parameters as well
+as a zeroth-order method. This lets us directly compare the two optimization approaches. We find, as show in figure 6, that
+the zeroth-order method is much more efficient and finds good parameters more quickly. Additionally, this discrepancy is
+14
+770
+771
+772
+773
+774
+775
+776
+777
+778
+779
+780
+781
+782
+783
+784
+785
+786
+787
+788
+789
+790
+791
+792
+793
+794
+795
+796
+797
+798
+799
+800
+801
+802
+803
+804
+805
+806
+807
+808
+809
+810
+811
+812
+813
+814
+815
+816
+817
+818
+819
+820
+821
+822
+823
+824
+Neural Ising Machines via Unrolling
+1.0 1.5 2.0 2.5 3.0 3.5 4.0 4.5 5.0
+degrees of freedom per parameter M
+0.42
+0.44
+0.46
+0.48
+0.50
+0.52reward (success rate)
+cNPIM
+1.0 1.5 2.0 2.5 3.0 3.5 4.0 4.5 5.0
+degrees of freedom per parameter M
+0.24
+0.25
+0.26
+0.27
+0.28
+0.29
+0.30
+dNPIM
+Fourier Legendre Chebyshev
+Figure 5.Comparison of temporal basis functions in NPIM. Final success rate for Fourier, Legendre, and Chebyshev bases as a function
+of degrees of freedom per parameter M, with Tc = 8 and D= 3 fixed. Left: cNPIM. Right: dNPIM. Networks are trained on N= 100
+SK instances using the success-rate reward, with 400 epochs, R= 400 trajectories per epoch, and batch size B= 20 . Performance
+improves asMincreases, and differences between bases are small once sufficient degrees of freedom are available.
+more prominent when the problem size (N) is increased (not shown in figure). It is for this reason that this work is solely
+focused on using a zeroth-order method to optimize the parameters and do not consider other types of gradient estimators.
+To understand more concretely why these methods differ in efficacy we can look at how the different gradient
+estimators work. As mentioned in the main text in section 2.4 we believe the failure of the policy-gradient method has to do
+with the fact that, for larger problem sizes, there are essentially many more “decisions” that the Ising machine has to make.
+Because of this, each decision on average contributes less to the success of the algorithm. So, using a gradient estimator at
+the level of a single decision is going to result in a very noisy estimate. More concretely, a MDP-based Ising machine
+will make a total of N T decisions over to course of a T -step trajectory of problem size N. If we make the simplifying
+assumption that each decision contributes ∼ 1
+N T to the total success of the algorithm (i.e. choosing one sign for the
+spin variable will result in a roughly 1
+N T larger probability of success), then this results in the gradient estimate for a
+single decision to have an SNR of roughly O((N T) −1). Even once we average over N T total decisions we still have an
+unfavorable SNR scaling ofO((N T) − 1
+2 ).
+On the other hand, making estimate of SNR for zeroth-order methods is not dependent on the number of “deci-
+sions” that the algorithm makes, but more so the reward landscape itself. One way of understanding this is that, whereas the
+policy gradient method relies on perturbations caused by the randomness of the decisions, the perturbations in the parameter
+space causes a sort of “correlated perturbation” over all N T decisions simultaneously which greatly increases the SNR of
+the estimator.
+Although this mathematical intuition can be useful, the exact reason for which the policy gradient method fails
+in this case is not well understood at the moment, and potentially could be a focus of future works. Currently, we have come
+to this conclusion primarily based on extensive trial and error, most of which is not included in this text.
+F. Reward Functions
+In this work we use two reward functions for training. All of the reward functions used are a function of Eopt, the best Ising
+energy in the given trajectory and E0 the best energy found by all previous runs of all algorithms (the supposed “ground
+energy”). Since we don’t know the true value for E0 in practice, during training we keep track of the best energy found
+by the algorithm over all previous trajectories and use this as E0. Since each instance is seen many times during training,
+towards the end of the training this value has stabilized and the algorithm reaches this energy with relatively high probability.
+This, along with the fact that it is the same energy found by other algorithms we tested makes us postulate that by the end of
+15
+825
+826
+827
+828
+829
+830
+831
+832
+833
+834
+835
+836
+837
+838
+839
+840
+841
+842
+843
+844
+845
+846
+847
+848
+849
+850
+851
+852
+853
+854
+855
+856
+857
+858
+859
+860
+861
+862
+863
+864
+865
+866
+867
+868
+869
+870
+871
+872
+873
+874
+875
+876
+877
+878
+879
+Neural Ising Machines via Unrolling
+Figure 6.Training reward of a zeroth-order optimization method and a policy gradient based method on the same instance distribution and
+network architecture.
+the training in most cases this is the ground state energy. This is also the logic behind why we use time to solution (TTS) as a
+metric. In cases where we are using TTS as an metric, then we wish to optimize the success rate and use the reward function
+Rsucc(Eopt) =
+
+
+
+1ifE opt =E 0
+− 1
+2 ifE opt >= 1
+2 E0
+0otherwise
+(24)
+the purpose of the middle case is to penalize really bad trajectories. This is important during the beginning of training to get
+a good reward signal when there might not be many successful trajectories, but during the end of the training there are no
+longer any of these bad trajectories so the reward landscape that is ultimately being optimized is equivalent to success rate.
+This two layered reward function serves a similar purpose to the bootstrapping and fine-tuning described in section 4.3.
+Rsucc is used for the results in figure 3 and table 2. The second reward function we use is defined by
+Robj(Eopt) =relu(1−τ(E opt −E 0))(25)
+The variable τ is modulated. Starting at τ= 0.005 , every 10 epochs it is increased by a factor of 1.5 if R>0.5 . The
+purpose of the relu function is to keep the reward in the range [0,1] which ensures numerical stability of the optimizer.
+Additionally, τ is modulated to try to ensure that the reward signal is strong. More specifically, if R>0.5 then most of the
+reward values will be clustered at the top of the interval, thus we increase τ to amplify the signal. Although this reward
+function doesn’t map directly to the relevant performance metric in this case, we use it for the benchmark results in table 1.
+G. Details on Parameter Optimizer (Dynamic Anisotropic Smoothing)
+For parameter optimization we use a zeroth-order evolutionary optimization algorithm based of (Reifenstein et al., 2024).
+This algorithm evolves a distribution of parameters described by two variables θx ∈R P and θL ∈R P×P . Our goal is to
+maximize the expected reward function which can be written as
+R(θx, θL) =E v,η,J ρ(traj(θx +θ Lv, η, J))(26)
+with the expected value take over three distributions. As described in section 3.4, v is a random variable in N(0,1) P which
+is mapped to a perturbation in the parameter space by the matrix θL. η is a random vector corresponding to the stochastic
+behavior of the trajectory dynamics themselves and lastly J is an instance of the Ising problem chosen from the relevant
+distribution. DAS works by first computing sample trajectories over these three distributions, and the using the resulting
+reward values to estimate the gradient of R with respect to θx and θL. The gradients are calculated using the following
+estimators
+∂R
+∂θL
+= (θ−1
+L )T Ev,η,J
+ 
+vv ⊤ρ(traj(θx +θ Lv, η, J))−I
+
+(27)
+16
+880
+881
+882
+883
+884
+885
+886
+887
+888
+889
+890
+891
+892
+893
+894
+895
+896
+897
+898
+899
+900
+901
+902
+903
+904
+905
+906
+907
+908
+909
+910
+911
+912
+913
+914
+915
+916
+917
+918
+919
+920
+921
+922
+923
+924
+925
+926
+927
+928
+929
+930
+931
+932
+933
+934
+Neural Ising Machines via Unrolling
+∂R
+∂θx
+= (θ−1
+L )T Ev,η,J vρ(traj(θx +θ Lv, η, J)).(28)
+In practice, we estimate this value using a batch ofBsamples of the random variableJ, each of which hasRindependent
+samples of the random variables v and η . This results in BR total samples used in the estimation. Or, in other words, at
+each iteration we use B total problem instances and run R trajectories of the algorithm for each instance to estimate the
+gradient. This is mainly because parallelization over trajectories of the same instance is a little easier and uses less GPU
+memory. We typically usedB= 20andR= 400for our results.
+G.1. Derivation of Equations equation 28
+For the sake of completeness we will include a brief derivation of equation. For explanation of equation equation G.1
+(gradient of θL) see (Reifenstein et al., 2024). To compute the gradient of the smoothed reward function (R(θx, θL) here
+and is equivalent toh(L, x)in (Reifenstein et al., 2024)) we can first write it as follows
+R(θx, θL) =E v,η,J ρ(traj(θx +θ Lv, η, J)) =
+Z
+v∈RD
+f(θ x +θ Lv)κ(v)dv(29)
+with
+f(θ x +θ Lv) =E η,J ρ(traj(θx +θ Lv, η, J))(30)
+and κ being the probability density function of the N(0,1) variable v. Then through the change of variables u=θ x +θ Lv,
+v=θ −1
+L (u−θ 0)we can write this as
+R(θx, θL) =
+Z
+u∈RD
+f(u)κ
+ 
+θ−1
+L (u−θ 0)
+
+det(θL)−1du(31)
+then we can take the derivative
+∂
+∂θx
+R(θx, θL) = ∂
+∂θx
+Z
+u∈RD
+f(u)κ
+ 
+θ−1
+L (u−θ x)
+
+det(θL)−1du(32)
+=
+Z
+u∈RD
+f(u) ∂
+∂θx
+κ
+ 
+θ−1
+L (u−θ x)
+
+det(θL)−1du(33)
+=
+Z
+u∈RD
+f(u)(θ −1
+L )T κ′ 
+θ−1
+L (u−θ x)
+
+det(θL)−1du(34)
+becauseκis a gaussian PDF
+= (θ−1
+L )T
+Z
+u∈RD
+f(u)θ −1
+L (u−θ x)κ
+ 
+θ−1
+L (u−θ x)
+
+det(θL)−1du(35)
+= (θ−1
+L )T
+Z
+u∈RD
+vf(θ x +θ Lv)κ(v))dv= (θ −1
+L )T Ev,η,J vρ(traj(θx +θ Lv, η, J))(36)
+H. Calculation of Time to Solution (TTS) for Ising Machines
+Time to solution (TTS) is defined as the amount of “time” it takes to optimize the given instance with 99% success probability.
+In this work, we use TTS to compare different Ising machine based algorithms. Because the computation time of all Ising
+machine algorithms is bottle-necked by the costly matrix vector multiplication that is needed every step of the algorithm, we
+use TTS in the units of number of steps of the algorithm. This takes out a factor relating to the specific hardware that is used
+making analysis easier. Thus, TTS is calculated as
+TTS=T log(1−0.99)
+log(1−P s) (37)
+where T is the number of steps/iterations, and Ps is the probability of finding the target solution in one run of that many
+steps.
+17
+935
+936
+937
+938
+939
+940
+941
+942
+943
+944
+945
+946
+947
+948
+949
+950
+951
+952
+953
+954
+955
+956
+957
+958
+959
+960
+961
+962
+963
+964
+965
+966
+967
+968
+969
+970
+971
+972
+973
+974
+975
+976
+977
+978
+979
+980
+981
+982
+983
+984
+985
+986
+987
+988
+989
+Neural Ising Machines via Unrolling
+I. Details of Training for Benchmark Results
+I.1. Table 1 Results
+For the neural CO benchmark we use an architecture with Tc = 20, D= 3 and M= 3 . The number of iterations is
+set to T= 300 for the smaller problem sizes and T= 1200 for the larger problem sizes. For the smaller problem sizes
+(N= 200 -300) we train a network from scratch for 400 epochs with hyper-parameters R= 400 and B= 20 . For the larger
+problem size (N= 800 -1200) we use the trained parameters for the corresponding smaller problem set and fine tune them
+on the larger problem set for 200 epochs. We use a training set size of 100 problem instances and a test set size of 1000
+problem instances (to be compatible with the results of (Sanokowski et al., 2025)). See section J for discussion on why
+100 problem instances is sufficient for a training set. We use the objective based reward function for all results on these
+benchmark (see sec F for details). Because out method has few parameters the training is relatively efficient compared to
+other methods such as (Sanokowski et al., 2025). For example, training the RB-small graphs takes about 4 minutes for our
+method using an A100 GPU while it is reported that this takes around 16 hours for SDDS in table 7 of (Sanokowski et al.,
+2025).
+I.2. Table 2 Results
+For the G-set benchmark we use an architecture with Tc = 20, D= 3 and M= 3 . The number of iterations is set to T=N
+in all cases except for the case of the unweighted planar graphs in which it is set to T= 4N . The parameters are first
+tuned on a smaller set of 100 instances of problem size N= 200 taken from the same distribution (same graph parameters).
+Then they are fine-tuned on another set of 100 instances of problem size N= 800 generated from the same distribution as
+the corresponding G-set instances. We use the hyper-parameters R= 400 and B= 20 and we use the success-rate based
+reward function for this benchmark (see sec F for details).
+J. In-Distribution Generalization
+In this section we will look at the effect of training set size on test error. In this work we typically use around∼100 problem
+instance for training. This may seem like a small number relative to many other machine learning settings, but in our case a
+small number is sufficient. In figure 7 we show that the test error (shown in solid traces) will be similar to the training error
+(shown in dashed traces), and overfitting will not happen, as long as there around ∼10 training problem instances. This
+phenomenon likely depends on the exact distribution of problem instances that we are considering, and reflects the fact that
+the optimal dynamics required to optimize different instances in the same class are very similar.
+Figure 7.Average train and test reward for different numbers of training problem instances. Problem instances are N= 100 SK model.
+K. Details on the effect of Hyper-Parameters on Performance
+In table 4 we show the success rate of cNPIM and dNPIM for different network parameters.
+18
+990
+991
+992
+993
+994
+995
+996
+997
+998
+999
+1000
+1001
+1002
+1003
+1004
+1005
+1006
+1007
+1008
+1009
+1010
+1011
+1012
+1013
+1014
+1015
+1016
+1017
+1018
+1019
+1020
+1021
+1022
+1023
+1024
+1025
+1026
+1027
+1028
+1029
+1030
+1031
+1032
+1033
+1034
+1035
+1036
+1037
+1038
+1039
+1040
+1041
+1042
+1043
+1044
+Neural Ising Machines via Unrolling
+Table 4.Table showing the effect of network architecture on performance for N= 100 SK problem instances. Equivalent data is shown
+in figure 3c as well. The average success rate for N= 100 SK problem instances is shown for different architectures parameterized by
+the three network hyper-parameters.
+Tc 4 8 12 4 4 8 8 12 12 4 4 8 12 8
+D1 1 1 3 1 1 3 1 3 3 3 3 3 3
+M1 1 1 1 3 3 1 3 1 3 5 3 3 5
+total P6 10 14 16 16 28 28 40 40 46 76 82 118 136
+cNPIM0.183 0.350 0.351 0.179 0.283 0.514 0.445 0.518 0.425 0.390 0.549 0.538 0.5420.550
+dNPIM0.032 0.221 0.237 0.070 0.094 0.272 0.277 0.309 0.276 0.270 0.282 0.3030.3100.306
+Table 5.Instance-wise TTS of different methods on G-set graphs.
+Graph TypeNPIM TTSSOTA TTSNPIM/SOTACut Value FoundBest Known Cut Value
+G1 N=800, R, +2.55e+04 6.01e+04 0.42 11624 11624
+G2 N=800, R, +2.28e+05 9.20e+05 0.25 11620 11620
+G3 N=800, R, +5.63e+04 1.70e+05 0.33 11622 11622
+G4 N=800, R, +1.00e+05 2.09e+05 0.48 11646 11646
+G5 N=800, R, +2.11e+05 2.26e+05 0.93 11631 11631
+G6 N=800, R, +/-3.52e+04 1.04e+05 0.34 2178 2178
+G7 N=800, R, +/-4.84e+04 1.46e+05 0.33 2006 2006
+G8 N=800, R, +/-6.55e+04 3.59e+05 0.18 2005 2005
+G9 N=800, R, +/-1.40e+05 2.24e+05 0.62 2054 2054
+G10 N=800, R, +/-5.51e+05 6.22e+05 0.88 2000 2000
+G11 N=800, T, +/-2.86e+04 2.22e+05 0.13 564 564
+G12 N=800, T, +/-5.51e+04 7.86e+04 0.70 556 556
+G13 N=800, T, +/-2.74e+05 3.73e+05 0.74 582 582
+G14 N=800, P, + 1.66e+08 1.31e+07 12.67 3064 3064
+G15 N=800, P, + 9.75e+06 4.63e+05 21.07 3050 3050
+G16 N=800, P, + 3.32e+07 4.94e+05 67.07 3052 3052
+G17 N=800, P, + 5.53e+07 3.09e+06 17.89 3047 3047
+G18 N=800, P, +/-5.01e+05 5.08e+05 0.99 992 992
+G19 N=800, P, +/-1.48e+05 1.80e+05 0.82 906 906
+G20 N=800, P, +/-1.17e+04 4.24e+04 0.28 941 941
+G21 N=800, P, +/-2.61e+05 5.74e+05 0.45 931 931
+G22 N=2000, R, +9.77e+05 2.56e+06 0.38 13359 13359
+L. G-set TTS Details
+In table 5 we show the time to solution of different algorithms with respect to each individual G-set instance. The units of
+time-to-solution are number of iterations to solution since the compute intensive matrix vector product is the computational
+bottleneck for each algorithm. The cut values we use are the same as that of (Goto et al., 2021) and are, to the best of our
+knowledge, the best cut values for these instance that have been published for these instances. Our method finds the same
+cut value in all cases we have checked.
+19
