@@ -27,5 +27,7 @@
   "0149e35f-24f1-4fa4-8de0-6fb6d0016389": "neural-ising-machines",
   "28d61f6a-0b80-4c24-ac43-93483973899e": "vit-5",
   "d9af54bd-5ddc-45df-8fba-cb05c468e6b5": "sparse-visual-representations",
-  "c39d243f-0c59-4f70-8ee6-d9e742174491": "vlm_guided_experience"
+  "c39d243f-0c59-4f70-8ee6-d9e742174491": "vlm_guided_experience",
+  "406571e0-9992-4690-a933-1d6eefd999fb": "veq",
+  "8af66b7f-148e-4e46-958c-53d20970e979": "efficient-multi-round-llm"
 }
